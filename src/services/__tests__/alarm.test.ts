@@ -7,6 +7,7 @@ import {
   deleteSavedAlarm,
   getNextAlarmOccurrence,
   listSavedAlarms,
+  setSavedAlarmEnabled,
   updateSavedAlarm,
   type SavedAlarm,
 } from '../alarm';
@@ -38,6 +39,7 @@ function storedAlarm(overrides: Partial<SavedAlarm> = {}): SavedAlarm {
     createdAt: '2026-08-17T00:00:00.000Z',
     hour: 7,
     id: 'alarm-1',
+    isEnabled: true,
     minute: 30,
     updatedAt: '2026-08-17T00:00:00.000Z',
     weekdays: [1, 3],
@@ -75,6 +77,7 @@ describe('Saved Alarm service', () => {
       createdAt: '2026-08-17T00:00:00.000Z',
       hour: 7,
       id: '00000000-0000-4000-8000-000000000001',
+      isEnabled: true,
       minute: 30,
       updatedAt: '2026-08-17T00:00:00.000Z',
       weekdays: [1, 3, 5],
@@ -86,6 +89,7 @@ describe('Saved Alarm service', () => {
           createdAt: '2026-08-17T00:00:00.000Z',
           hour: 7,
           id: '00000000-0000-4000-8000-000000000001',
+          isEnabled: true,
           minute: 30,
           updatedAt: '2026-08-17T00:00:00.000Z',
           weekdays: [1, 3, 5],
@@ -108,10 +112,39 @@ describe('Saved Alarm service', () => {
       createdAt: '2026-08-17T00:00:00.000Z',
       hour: 8,
       id: 'alarm-1',
+      isEnabled: true,
       minute: 45,
       updatedAt: '2026-08-18T00:00:00.000Z',
       weekdays: [3],
     });
+  });
+
+  it('toggles a Saved Alarm enabled state', async () => {
+    mocks.getItem.mockResolvedValue(JSON.stringify([storedAlarm()]));
+    vi.setSystemTime(new Date('2026-08-18T00:00:00.000Z'));
+
+    await expect(setSavedAlarmEnabled('alarm-1', false)).resolves.toEqual({
+      ...storedAlarm(),
+      isEnabled: false,
+      updatedAt: '2026-08-18T00:00:00.000Z',
+    });
+    expect(mocks.setItem).toHaveBeenCalledWith(
+      'sleepy-face:saved-alarms',
+      JSON.stringify([
+        {
+          ...storedAlarm(),
+          isEnabled: false,
+          updatedAt: '2026-08-18T00:00:00.000Z',
+        },
+      ]),
+    );
+  });
+
+  it('reads older Saved Alarms without enabled state as enabled', async () => {
+    const { isEnabled: _isEnabled, ...legacyAlarm } = storedAlarm();
+    mocks.getItem.mockResolvedValue(JSON.stringify([legacyAlarm]));
+
+    await expect(listSavedAlarms()).resolves.toEqual([storedAlarm()]);
   });
 
   it('deletes a Saved Alarm and clears all Saved Alarms explicitly', async () => {
@@ -225,6 +258,10 @@ describe('Saved Alarm service', () => {
     ).rejects.toMatchObject({ code: 'saved_alarm_not_found' });
 
     await expect(deleteSavedAlarm('missing')).rejects.toMatchObject({
+      code: 'saved_alarm_not_found',
+    });
+
+    await expect(setSavedAlarmEnabled('missing', false)).rejects.toMatchObject({
       code: 'saved_alarm_not_found',
     });
 

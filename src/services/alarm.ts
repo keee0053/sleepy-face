@@ -9,6 +9,7 @@ export type SavedAlarm = {
   hour: number;
   minute: number;
   weekdays: Weekday[];
+  isEnabled: boolean;
   createdAt: string;
   updatedAt: string;
 };
@@ -38,6 +39,7 @@ type StoredAlarmRow = {
   hour: unknown;
   minute: unknown;
   weekdays: unknown;
+  isEnabled?: unknown;
   createdAt: unknown;
   updatedAt: unknown;
 };
@@ -166,6 +168,7 @@ function mapStoredAlarm(value: unknown): SavedAlarm {
     createdAt: row.createdAt,
     hour: row.hour as number,
     id: row.id,
+    isEnabled: typeof row.isEnabled === 'boolean' ? row.isEnabled : true,
     minute: row.minute as number,
     updatedAt: row.updatedAt,
     weekdays: normalizeWeekdays(row.weekdays, 'storage_parse_failed'),
@@ -332,6 +335,7 @@ export async function createSavedAlarm(
     createdAt: now,
     hour: validatedInput.hour,
     id: generateSavedAlarmId(),
+    isEnabled: true,
     minute: validatedInput.minute,
     updatedAt: now,
     weekdays: validatedInput.weekdays,
@@ -366,6 +370,33 @@ export async function updateSavedAlarm(
     minute: validatedInput.minute,
     updatedAt: new Date().toISOString(),
     weekdays: validatedInput.weekdays,
+  };
+
+  await writeSavedAlarms(
+    savedAlarms.map((alarm) => (alarm.id === id ? updatedAlarm : alarm)),
+  );
+
+  return updatedAlarm;
+}
+
+export async function setSavedAlarmEnabled(
+  id: string,
+  isEnabled: boolean,
+): Promise<SavedAlarm> {
+  const savedAlarms = await readSavedAlarms();
+  const targetAlarm = savedAlarms.find((alarm) => alarm.id === id);
+
+  if (!targetAlarm) {
+    throw new AlarmServiceError(
+      'saved_alarm_not_found',
+      'Saved Alarm could not be found.',
+    );
+  }
+
+  const updatedAlarm: SavedAlarm = {
+    ...targetAlarm,
+    isEnabled,
+    updatedAt: new Date().toISOString(),
   };
 
   await writeSavedAlarms(
