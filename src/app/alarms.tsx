@@ -30,6 +30,7 @@ const WEEKDAY_LABELS: Record<Weekday, string> = {
   5: '金',
   6: '土',
 };
+const WEEKDAYS: Weekday[] = [1, 2, 3, 4, 5];
 
 function formatTime(alarm: SavedAlarm): string {
   return `${String(alarm.hour).padStart(2, '0')}:${String(
@@ -42,7 +43,10 @@ function formatWeekdays(weekdays: Weekday[]): string {
     return '毎日';
   }
 
-  if (weekdays.length === 5 && weekdays.every((weekday) => weekday >= 1)) {
+  if (
+    weekdays.length === WEEKDAYS.length &&
+    weekdays.every((weekday, index) => weekday === WEEKDAYS[index])
+  ) {
     return '平日';
   }
 
