@@ -4,14 +4,15 @@ import {
   ActivityIndicator,
   FlatList,
   Pressable,
-  SafeAreaView,
   StyleSheet,
   Text,
   TextInput,
   View,
   type ListRenderItem,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { MockBottomNav } from '@/components/mock-ui';
 import {
   FriendServiceError,
   addFriend,
@@ -290,6 +291,7 @@ export default function AddFriendScreen() {
           </View>
         )}
       </View>
+      <MockBottomNav active="friends" />
     </SafeAreaView>
   );
 }
@@ -301,6 +303,7 @@ const styles = StyleSheet.create({
   },
   container: {
     flex: 1,
+    paddingBottom: 92,
     padding: 24,
   },
   header: {

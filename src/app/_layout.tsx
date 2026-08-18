@@ -63,7 +63,7 @@ export default function RootLayout() {
         return;
       }
 
-      if (isAuthRoute(pathname) || isInitialSetupRoute(pathname)) {
+      if (isAuthRoute(pathname)) {
         router.replace('/home');
       }
     }

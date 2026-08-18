@@ -1,78 +1,68 @@
-import { useLocalSearchParams } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
-import { Button, Text, View } from 'react-native';
+import { router } from 'expo-router';
+import { StyleSheet, Text, View } from 'react-native';
 
-import {
-  AndroidAlarmMechanicsError,
-  getRingingAlarmState,
-  stopRingingAlarm,
-  type RingingAlarmState,
-} from '@/services/android-alarm-mechanics';
-
-function getErrorMessage(error: unknown): string {
-  if (error instanceof AndroidAlarmMechanicsError) {
-    return `${error.code}: ${error.message}`;
-  }
-
-  if (error instanceof Error) {
-    return error.message;
-  }
-
-  return 'unknown error';
-}
+import { MockButton, MockCard, MockScreen } from '@/components/mock-ui';
 
 export default function RingingScreen() {
-  const params = useLocalSearchParams<{
-    alarmId?: string;
-    startedAt?: string;
-  }>();
-  const [ringingState, setRingingState] = useState<RingingAlarmState | null>(
-    null,
-  );
-  const [message, setMessage] = useState<string | null>(null);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
-
-  const refreshRingingState = useCallback(async () => {
-    try {
-      setErrorMessage(null);
-      setRingingState(await getRingingAlarmState());
-    } catch (error) {
-      setErrorMessage(getErrorMessage(error));
-    }
-  }, []);
-
-  useEffect(() => {
-    const timeout = setTimeout(() => {
-      refreshRingingState();
-    }, 0);
-
-    return () => {
-      clearTimeout(timeout);
-    };
-  }, [refreshRingingState]);
-
-  const handleStop = useCallback(async () => {
-    try {
-      setErrorMessage(null);
-      await stopRingingAlarm();
-      setMessage('stopped ringing alarm');
-      await refreshRingingState();
-    } catch (error) {
-      setErrorMessage(getErrorMessage(error));
-    }
-  }, [refreshRingingState]);
-
   return (
-    <View>
-      <Text>アラーム鳴動画面</Text>
-      <Text>route alarmId: {params.alarmId ?? 'none'}</Text>
-      <Text>route startedAt: {params.startedAt ?? 'none'}</Text>
-      <Text>ringing alarmId: {ringingState?.alarmId ?? 'none'}</Text>
-      <Text>ringing startedAt: {ringingState?.startedAt ?? 'none'}</Text>
-      <Button onPress={refreshRingingState} title="refresh ringing state" />
-      <Button onPress={handleStop} title="stop ringing alarm" />
-      <Text>message: {message ?? 'none'}</Text>
-      <Text>error: {errorMessage ?? 'none'}</Text>
-    </View>
+    <MockScreen
+      subtitle="アラーム音が鳴っている間に、顔撮影とクイズを完了します。"
+      title="アラーム"
+    >
+      <View style={styles.clockCircle}>
+        <Text style={styles.currentTime}>07:30</Text>
+      </View>
+
+      <MockCard>
+        <View style={styles.timerRow}>
+          <View>
+            <Text style={styles.timerLabel}>経過時間</Text>
+            <Text style={styles.timerValue}>00:42</Text>
+          </View>
+          <View>
+            <Text style={styles.timerLabel}>残り時間</Text>
+            <Text style={styles.timerValue}>02:18</Text>
+          </View>
+        </View>
+      </MockCard>
+
+      <MockButton
+        label="顔を撮影する"
+        onPress={() => router.navigate('/face-check')}
+      />
+    </MockScreen>
   );
 }
+
+const styles = StyleSheet.create({
+  clockCircle: {
+    alignItems: 'center',
+    alignSelf: 'center',
+    backgroundColor: '#f5f5f5',
+    borderRadius: 120,
+    height: 240,
+    justifyContent: 'center',
+    marginVertical: 32,
+    width: 240,
+  },
+  currentTime: {
+    color: '#171717',
+    fontSize: 54,
+    fontWeight: '900',
+  },
+  timerRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  timerLabel: {
+    color: '#737373',
+    fontSize: 12,
+    fontWeight: '900',
+    marginBottom: 8,
+  },
+  timerValue: {
+    color: '#171717',
+    fontSize: 28,
+    fontWeight: '900',
+  },
+});

@@ -1,14 +1,14 @@
 import { router } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
-import {
-  Button,
-  SafeAreaView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
+import { StyleSheet, Text, TextInput, View } from 'react-native';
 
+import {
+  MockAvatar,
+  MockBottomNav,
+  MockButton,
+  MockCard,
+  MockScreen,
+} from '@/components/mock-ui';
 import { getCurrentUserId } from '@/services/auth';
 import {
   UserServiceError,
@@ -51,6 +51,8 @@ export default function ProfileSetupScreen() {
   const [displayName, setDisplayName] = useState('');
   const [publicUserId, setPublicUserId] = useState('');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [isExistingProfile, setIsExistingProfile] = useState(false);
   const [isCheckingProfile, setIsCheckingProfile] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -76,7 +78,10 @@ export default function ProfileSetupScreen() {
       }
 
       if (profile) {
-        router.replace('/home');
+        setPublicUserId(profile.userId);
+        setDisplayName(profile.displayName);
+        setIsExistingProfile(true);
+        setIsCheckingProfile(false);
         return;
       }
 
@@ -103,6 +108,7 @@ export default function ProfileSetupScreen() {
 
   const handleSubmit = useCallback(async () => {
     setErrorMessage(null);
+    setSuccessMessage(null);
 
     const validationResult = validateInitialSetupInput({
       displayName,
@@ -116,6 +122,12 @@ export default function ProfileSetupScreen() {
 
     setDisplayName(validationResult.value.displayName);
     setPublicUserId(validationResult.value.publicUserId);
+
+    if (isExistingProfile) {
+      setSuccessMessage('プロフィール編集画面の表示を確認できます。');
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
@@ -146,23 +158,42 @@ export default function ProfileSetupScreen() {
     } finally {
       setIsSubmitting(false);
     }
-  }, [displayName, publicUserId]);
+  }, [displayName, isExistingProfile, publicUserId]);
 
   if (isCheckingProfile) {
     return (
-      <SafeAreaView style={styles.safeArea}>
+      <MockScreen title="プロフィール">
         <View style={styles.container}>
           <Text>確認中...</Text>
         </View>
-      </SafeAreaView>
+      </MockScreen>
     );
   }
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <View style={styles.container}>
-        <Text>プロフィール設定</Text>
+    <MockScreen
+      footer={<MockBottomNav active="profile" />}
+      subtitle={
+        isExistingProfile
+          ? '表示名やユーザーIDを確認できます。'
+          : 'アプリで使うユーザーIDと表示名を登録します。'
+      }
+      title={isExistingProfile ? 'プロフィール編集' : 'プロフィール設定'}
+    >
+      <MockCard>
+        <View style={styles.profileHeader}>
+          <MockAvatar label={displayName || 'U'} />
+          <View style={styles.profileSummary}>
+            <Text style={styles.summaryName}>
+              {displayName || '表示名未入力'}
+            </Text>
+            <Text style={styles.summaryId}>@{publicUserId || 'user_id'}</Text>
+          </View>
+        </View>
+      </MockCard>
 
+      <View style={styles.form}>
+        <Text style={styles.label}>ユーザーID</Text>
         <TextInput
           autoCapitalize="none"
           autoCorrect={false}
@@ -173,6 +204,7 @@ export default function ProfileSetupScreen() {
           value={publicUserId}
         />
 
+        <Text style={styles.label}>表示名</Text>
         <TextInput
           editable={!isSubmitting}
           onChangeText={setDisplayName}
@@ -181,34 +213,75 @@ export default function ProfileSetupScreen() {
           value={displayName}
         />
 
-        <Button
+        <MockButton
           disabled={isSubmitting}
           onPress={handleSubmit}
-          title={isSubmitting ? '作成中...' : '登録'}
+          label={
+            isSubmitting ? '作成中...' : isExistingProfile ? '保存' : '登録'
+          }
         />
 
         {errorMessage && <Text style={styles.errorText}>{errorMessage}</Text>}
+        {successMessage && (
+          <Text style={styles.successText}>{successMessage}</Text>
+        )}
       </View>
-    </SafeAreaView>
+    </MockScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
+  container: {
+    alignItems: 'center',
+    paddingVertical: 40,
+  },
+  profileHeader: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 14,
+  },
+  profileSummary: {
     flex: 1,
   },
-  container: {
-    flex: 1,
+  summaryName: {
+    color: '#171717',
+    fontSize: 20,
+    fontWeight: '900',
+  },
+  summaryId: {
+    color: '#737373',
+    fontSize: 14,
+    fontWeight: '700',
+    marginTop: 4,
+  },
+  form: {
     gap: 12,
-    justifyContent: 'center',
-    padding: 24,
+  },
+  label: {
+    color: '#171717',
+    fontSize: 14,
+    fontWeight: '900',
   },
   input: {
-    borderColor: '#999999',
+    backgroundColor: '#ffffff',
+    borderColor: '#d4d4d4',
+    borderRadius: 12,
     borderWidth: 1,
-    padding: 12,
+    color: '#171717',
+    fontSize: 16,
+    minHeight: 54,
+    paddingHorizontal: 14,
   },
   errorText: {
     color: '#b42318',
+    fontSize: 14,
+    fontWeight: '700',
+    lineHeight: 21,
+  },
+  successText: {
+    color: '#067647',
+    fontSize: 14,
+    fontWeight: '700',
+    lineHeight: 21,
   },
 });

@@ -1,4 +1,5 @@
 import { CameraView, useCameraPermissions } from 'expo-camera';
+import { router } from 'expo-router';
 import { useRef, useState } from 'react';
 import {
   ActivityIndicator,
@@ -228,6 +229,16 @@ export default function FaceCheckScreen() {
             disabled={isBusy || !localPhotoUri}
             label="失敗としてアップロード"
             onPress={uploadFailurePhoto}
+          />
+          <SecondaryButton
+            disabled={isBusy}
+            label="成功画面へ"
+            onPress={() => router.navigate('/face-check-success')}
+          />
+          <SecondaryButton
+            disabled={isBusy}
+            label="失敗画面へ"
+            onPress={() => router.navigate('/face-check-failure')}
           />
         </View>
       </View>
