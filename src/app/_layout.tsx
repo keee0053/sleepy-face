@@ -2,6 +2,7 @@ import { Stack, router, usePathname } from 'expo-router';
 import { useEffect } from 'react';
 import { AppRegistry, InteractionManager } from 'react-native';
 
+import { QuizAnswerFeedbackProvider } from '@/components/quiz-answer-feedback';
 import { resyncAllScheduledAlarms } from '@/services/alarm';
 import { getCurrentUserId } from '@/services/auth';
 import { getMyProfile } from '@/services/user';
@@ -150,5 +151,9 @@ export default function RootLayout() {
     };
   }, [pathname]);
 
-  return <Stack screenOptions={{ headerShown: false }} />;
+  return (
+    <QuizAnswerFeedbackProvider>
+      <Stack screenOptions={{ headerShown: false }} />
+    </QuizAnswerFeedbackProvider>
+  );
 }
