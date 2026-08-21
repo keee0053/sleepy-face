@@ -26,6 +26,7 @@ import {
   listFriendsFeed,
   type FriendsFeedItem,
 } from '@/services/home-feed';
+import { registerPushToken } from '@/services/push-token';
 
 function getHomeFeedErrorMessage(error: unknown): string {
   if (error instanceof HomeFeedServiceError) {
@@ -80,6 +81,14 @@ export default function HomeScreen() {
     return () => {
       isActive = false;
     };
+  }, []);
+
+  useEffect(() => {
+    // Best-effort: a failed/denied push token registration must never block or error the
+    // Home screen, since the Friends Feed is the fallback delivery path either way.
+    registerPushToken().catch((error: unknown) => {
+      console.warn('[home] push token registration failed', error);
+    });
   }, []);
 
   useEffect(() => {
