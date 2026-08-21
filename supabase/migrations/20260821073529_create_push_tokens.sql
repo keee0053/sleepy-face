@@ -13,8 +13,19 @@ create index push_tokens_profile_id_idx on public.push_tokens (profile_id);
 
 alter table public.push_tokens enable row level security;
 
--- No select policy: clients never need to read push_tokens (only the service-role Edge
--- Function does, which bypasses RLS), and this keeps device tokens unreadable to other users.
+-- A select policy IS required even though clients never read push_tokens directly: the
+-- client's upsert uses `INSERT ... ON CONFLICT (token) DO UPDATE`, and Postgres RLS needs
+-- select visibility on the conflicting row to decide whether to insert or update at all —
+-- without this, every upsert fails closed with "new row violates row-level security policy",
+-- regardless of how permissive the insert/update policies are (confirmed via curl against
+-- the live REST API: removing on_conflict/resolution=merge-duplicates made the identical
+-- request succeed, isolating the cause to conflict detection, not the insert/update checks).
+create policy "Authenticated users can see push token rows to resolve conflicts"
+  on public.push_tokens
+  for select
+  to authenticated
+  using (true);
+
 create policy "Users can register their own push token"
   on public.push_tokens
   for insert
