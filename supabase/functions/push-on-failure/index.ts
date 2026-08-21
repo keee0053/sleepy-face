@@ -53,7 +53,7 @@ Deno.serve(async (request: Request) => {
   const webhookSecret = Deno.env.get('PUSH_WEBHOOK_SECRET');
 
   if (
-    webhookSecret &&
+    !webhookSecret ||
     request.headers.get('x-webhook-secret') !== webhookSecret
   ) {
     return new Response('Unauthorized', { status: 401 });
