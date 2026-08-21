@@ -64,9 +64,18 @@ const correctAnswerSamples = [
   ...renderSilence(0.025),
   ...renderTone(987.77, 0.18),
 ];
+const incorrectAnswerSamples = [
+  ...renderTone(293.66, 0.12),
+  ...renderSilence(0.025),
+  ...renderTone(196, 0.2),
+];
 
 mkdirSync(outputDirectory, { recursive: true });
 writeFileSync(
   resolve(outputDirectory, 'quiz-correct.wav'),
   createWaveFile(correctAnswerSamples),
+);
+writeFileSync(
+  resolve(outputDirectory, 'quiz-incorrect.wav'),
+  createWaveFile(incorrectAnswerSamples),
 );

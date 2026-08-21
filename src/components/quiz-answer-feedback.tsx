@@ -1,4 +1,5 @@
 import { useAudioPlayer } from 'expo-audio';
+import * as Haptics from 'expo-haptics';
 import {
   createContext,
   type PropsWithChildren,
@@ -7,12 +8,17 @@ import {
   useMemo,
 } from 'react';
 
-import { replaySoundEffect } from '@/services/quiz-answer-feedback';
+import {
+  playIncorrectQuizAnswerFeedback,
+  replaySoundEffect,
+} from '@/services/quiz-answer-feedback';
 
 const correctAnswerSound = require('../../assets/sounds/quiz-correct.wav');
+const incorrectAnswerSound = require('../../assets/sounds/quiz-incorrect.wav');
 
 type QuizAnswerFeedbackContextValue = {
   playCorrectAnswerFeedback: () => void;
+  playIncorrectAnswerFeedback: () => void;
 };
 
 const QuizAnswerFeedbackContext =
@@ -20,14 +26,21 @@ const QuizAnswerFeedbackContext =
 
 export function QuizAnswerFeedbackProvider({ children }: PropsWithChildren) {
   const correctAnswerPlayer = useAudioPlayer(correctAnswerSound);
+  const incorrectAnswerPlayer = useAudioPlayer(incorrectAnswerSound);
 
   const playCorrectAnswerFeedback = useCallback(() => {
     replaySoundEffect(correctAnswerPlayer);
   }, [correctAnswerPlayer]);
 
+  const playIncorrectAnswerFeedback = useCallback(() => {
+    playIncorrectQuizAnswerFeedback(incorrectAnswerPlayer, () =>
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error),
+    );
+  }, [incorrectAnswerPlayer]);
+
   const value = useMemo(
-    () => ({ playCorrectAnswerFeedback }),
-    [playCorrectAnswerFeedback],
+    () => ({ playCorrectAnswerFeedback, playIncorrectAnswerFeedback }),
+    [playCorrectAnswerFeedback, playIncorrectAnswerFeedback],
   );
 
   return (

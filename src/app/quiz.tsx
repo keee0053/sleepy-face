@@ -69,7 +69,8 @@ export default function QuizScreen() {
     localPhotoUri?: string;
   }>();
   const timer = useAlarmTimer();
-  const { playCorrectAnswerFeedback } = useQuizAnswerFeedback();
+  const { playCorrectAnswerFeedback, playIncorrectAnswerFeedback } =
+    useQuizAnswerFeedback();
   const [quizState, setQuizState] = useState<QuizState>(() => startQuiz());
   const [answerText, setAnswerText] = useState('');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -149,6 +150,8 @@ export default function QuizScreen() {
 
       if (nextState.lastAnswerCorrect) {
         playCorrectAnswerFeedback();
+      } else {
+        playIncorrectAnswerFeedback();
       }
 
       if (nextState.status === 'completed') {
