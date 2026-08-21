@@ -26,9 +26,9 @@ describe('resolveFriendProfileId', () => {
 });
 
 describe('buildFailurePushMessages', () => {
-  it('builds one message per non-null token, skipping missing tokens', () => {
+  it('builds one message per token', () => {
     expect(
-      buildFailurePushMessages('Sleepy User', ['token-1', null, 'token-2']),
+      buildFailurePushMessages('Sleepy User', ['token-1', 'token-2']),
     ).toEqual([
       {
         body: 'failed their wake-up challenge 😴',
@@ -43,8 +43,8 @@ describe('buildFailurePushMessages', () => {
     ]);
   });
 
-  it('returns no messages when no friend has a token', () => {
-    expect(buildFailurePushMessages('Sleepy User', [null, null])).toEqual([]);
+  it('returns no messages when there are no tokens', () => {
+    expect(buildFailurePushMessages('Sleepy User', [])).toEqual([]);
   });
 });
 
@@ -62,15 +62,15 @@ function makeDeps(overrides: Partial<NotifyDeps> = {}): NotifyDeps {
 }
 
 describe('notifyFriendsOfFailure', () => {
-  it('notifies every friend that has a token', async () => {
+  it('notifies every friend that has a registered device', async () => {
     const deps = makeDeps({
       listFriendRelations: vi.fn().mockResolvedValue([
         { friend_profile_id: 'profile-b', profile_id: 'profile-a' },
         { friend_profile_id: 'profile-a', profile_id: 'profile-c' },
       ]),
       listPushTokens: vi.fn().mockResolvedValue([
-        { id: 'profile-b', push_token: 'token-b' },
-        { id: 'profile-c', push_token: 'token-c' },
+        { profile_id: 'profile-b', token: 'token-b' },
+        { profile_id: 'profile-c', token: 'token-c' },
       ]),
     });
 
@@ -95,16 +95,36 @@ describe('notifyFriendsOfFailure', () => {
     expect(deps.sendPush).toHaveBeenCalledWith(messages);
   });
 
-  it('skips a friend with no token while still notifying the others', async () => {
+  it('notifies every device of a friend with multiple registered devices', async () => {
+    const deps = makeDeps({
+      listFriendRelations: vi
+        .fn()
+        .mockResolvedValue([
+          { friend_profile_id: 'profile-b', profile_id: 'profile-a' },
+        ]),
+      listPushTokens: vi.fn().mockResolvedValue([
+        { profile_id: 'profile-b', token: 'token-b-phone' },
+        { profile_id: 'profile-b', token: 'token-b-tablet' },
+      ]),
+    });
+
+    const messages = await notifyFriendsOfFailure('profile-a', deps);
+
+    expect(messages.map((message) => message.to)).toEqual([
+      'token-b-phone',
+      'token-b-tablet',
+    ]);
+  });
+
+  it('skips a friend with no registered device while still notifying the others', async () => {
     const deps = makeDeps({
       listFriendRelations: vi.fn().mockResolvedValue([
         { friend_profile_id: 'profile-b', profile_id: 'profile-a' },
         { friend_profile_id: 'profile-c', profile_id: 'profile-a' },
       ]),
-      listPushTokens: vi.fn().mockResolvedValue([
-        { id: 'profile-b', push_token: null },
-        { id: 'profile-c', push_token: 'token-c' },
-      ]),
+      listPushTokens: vi
+        .fn()
+        .mockResolvedValue([{ profile_id: 'profile-c', token: 'token-c' }]),
     });
 
     const messages = await notifyFriendsOfFailure('profile-a', deps);
@@ -137,7 +157,7 @@ describe('notifyFriendsOfFailure', () => {
         ]),
       listPushTokens: vi
         .fn()
-        .mockResolvedValue([{ id: 'profile-b', push_token: 'token-b' }]),
+        .mockResolvedValue([{ profile_id: 'profile-b', token: 'token-b' }]),
     });
 
     await notifyFriendsOfFailure('profile-a', deps);
@@ -156,16 +176,14 @@ describe('notifyFriendsOfFailure', () => {
     expect(deps.listFriendRelations).not.toHaveBeenCalled();
   });
 
-  it('does not call sendPush when there are friends but none have a token', async () => {
+  it('does not call sendPush when there are friends but none have a registered device', async () => {
     const deps = makeDeps({
       listFriendRelations: vi
         .fn()
         .mockResolvedValue([
           { friend_profile_id: 'profile-b', profile_id: 'profile-a' },
         ]),
-      listPushTokens: vi
-        .fn()
-        .mockResolvedValue([{ id: 'profile-b', push_token: null }]),
+      listPushTokens: vi.fn().mockResolvedValue([]),
     });
 
     const messages = await notifyFriendsOfFailure('profile-a', deps);

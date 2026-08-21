@@ -8,9 +8,9 @@ export type FailedProfile = {
   display_name: string;
 };
 
-export type FriendPushToken = {
-  id: string;
-  push_token: string | null;
+export type PushTokenRow = {
+  profile_id: string;
+  token: string;
 };
 
 export type PushMessage = {
@@ -22,7 +22,7 @@ export type PushMessage = {
 export type NotifyDeps = {
   getFailedProfile(profileId: string): Promise<FailedProfile | null>;
   listFriendRelations(profileId: string): Promise<FriendRelationRow[]>;
-  listPushTokens(profileIds: string[]): Promise<FriendPushToken[]>;
+  listPushTokens(profileIds: string[]): Promise<PushTokenRow[]>;
   sendPush(messages: PushMessage[]): Promise<void>;
 };
 
@@ -42,21 +42,21 @@ export function resolveFriendProfileId(
 
 export function buildFailurePushMessages(
   failedDisplayName: string,
-  friendPushTokens: (string | null)[],
+  tokens: string[],
 ): PushMessage[] {
-  return friendPushTokens
-    .filter((token): token is string => Boolean(token))
-    .map((token) => ({
-      body: FAILURE_PUSH_BODY,
-      title: failedDisplayName,
-      to: token,
-    }));
+  return tokens.map((token) => ({
+    body: FAILURE_PUSH_BODY,
+    title: failedDisplayName,
+    to: token,
+  }));
 }
 
 // Given the profile a new Failure Card was just created for, resolves that profile's
-// Friends, builds one push message per friend that has a registered token (friends
-// without one are silently skipped), and sends them. Never notifies the failed user's
-// own token — friend relations by construction never name the profile as its own friend.
+// Friends, builds one push message per registered device token across those friends
+// (a friend with several devices gets notified on each; a friend with none is silently
+// skipped, since there's no row for them), and sends them. Never notifies the failed
+// user's own token — friend relations by construction never name the profile as its own
+// friend.
 export async function notifyFriendsOfFailure(
   failedProfileId: string,
   deps: NotifyDeps,
@@ -76,10 +76,10 @@ export async function notifyFriendsOfFailure(
     return [];
   }
 
-  const friendProfiles = await deps.listPushTokens(friendProfileIds);
+  const tokenRows = await deps.listPushTokens(friendProfileIds);
   const messages = buildFailurePushMessages(
     failedProfile.display_name,
-    friendProfiles.map((profile) => profile.push_token),
+    tokenRows.map((row) => row.token),
   );
 
   if (messages.length > 0) {

@@ -63,10 +63,15 @@ export async function registerPushToken(
 
   const { data: expoPushToken } = await provider.getExpoPushTokenAsync();
 
+  // Upserts by token, not by profile: a token identifies an app install, so if the same
+  // install re-registers under a different profile (e.g. a new user logs in on this
+  // device), the row is reassigned to the current profile rather than duplicated.
   const { error } = await supabase
-    .from('profiles')
-    .update({ push_token: expoPushToken })
-    .eq('id', profileId);
+    .from('push_tokens')
+    .upsert(
+      { profile_id: profileId, token: expoPushToken },
+      { onConflict: 'token' },
+    );
 
   if (error) {
     throw new PushTokenServiceError(

@@ -6,9 +6,9 @@ import { createClient } from 'jsr:@supabase/supabase-js@2';
 import {
   notifyFriendsOfFailure,
   type FailedProfile,
-  type FriendPushToken,
   type FriendRelationRow,
   type PushMessage,
+  type PushTokenRow,
 } from './notify.ts';
 
 const EXPO_PUSH_URL = 'https://exp.host/--/api/v2/push/send';
@@ -90,11 +90,11 @@ Deno.serve(async (request: Request) => {
 
       return data ?? [];
     },
-    listPushTokens: async (profileIds): Promise<FriendPushToken[]> => {
+    listPushTokens: async (profileIds): Promise<PushTokenRow[]> => {
       const { data } = await supabase
-        .from('profiles')
-        .select('id, push_token')
-        .in('id', profileIds);
+        .from('push_tokens')
+        .select('profile_id, token')
+        .in('profile_id', profileIds);
 
       return data ?? [];
     },
