@@ -1,6 +1,6 @@
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import {
   FlatList,
   Pressable,
@@ -15,6 +15,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { BottomNav } from '@/components/bottom-nav';
 import { CommentBubbleIcon } from '@/components/comment-bubble-icon';
 import { FeedLoadingSkeleton } from '@/components/loading-skeletons';
+import { PhotoRealMojiBar } from '@/components/photo-realmoji-bar';
+import { RealMojiComposer } from '@/components/realmoji-composer';
 import { getProfileIconSource } from '@/constants/profile-icons';
 import { getDevMode, setDevMode } from '@/services/dev-mode';
 import {
@@ -28,10 +30,7 @@ import {
   listFriendsFeed,
   type FriendsFeedItem,
 } from '@/services/home-feed';
-import {
-  addPhotoReaction,
-  removePhotoReaction,
-} from '@/services/photo-reactions';
+import { type PhotoRealMoji } from '@/services/photo-realmojis';
 import { registerPushToken } from '@/services/push-token';
 
 function getHomeFeedErrorMessage(error: unknown): string {
@@ -74,9 +73,7 @@ export default function HomeScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isDevMode, setIsDevMode] = useState(false);
-  // A pure in-flight guard for handleToggleReaction — never read by JSX/styles, so a
-  // ref avoids an extra re-render on every reaction tap that useState would cause.
-  const pendingReactionPhotoIds = useRef<Set<string>>(new Set());
+  const [composerPhotoId, setComposerPhotoId] = useState<string | null>(null);
 
   useEffect(() => {
     let isActive = true;
@@ -142,53 +139,41 @@ export default function HomeScreen() {
     }
   }, []);
 
-  const applyReactionState = useCallback(
-    (photoId: string, hasReacted: boolean) => {
-      setFeed((currentFeed) =>
-        currentFeed.map((item) =>
-          item.photoId === photoId
-            ? {
-                ...item,
-                reactionCount: item.reactionCount + (hasReacted ? 1 : -1),
-                viewerHasReacted: hasReacted,
-              }
-            : item,
-        ),
-      );
-    },
-    [],
-  );
+  const handleRealMojiSaved = useCallback((realMoji: PhotoRealMoji) => {
+    setFeed((currentFeed) =>
+      currentFeed.map((item) =>
+        item.photoId === realMoji.photoId
+          ? {
+              ...item,
+              realMojis: [
+                ...item.realMojis.filter(
+                  (itemRealMoji) =>
+                    itemRealMoji.profileId !== realMoji.profileId,
+                ),
+                realMoji,
+              ],
+            }
+          : item,
+      ),
+    );
+  }, []);
 
-  const handleToggleReaction = useCallback(
-    async (item: FriendsFeedItem) => {
-      // A photo already has a toggle in flight — ignore the tap rather than let a
-      // second add/remove request race the first and leave the feed out of sync.
-      if (pendingReactionPhotoIds.current.has(item.photoId)) {
-        return;
-      }
+  const handleRealMojiRemoved = useCallback(() => {
+    if (!composerPhotoId) {
+      return;
+    }
 
-      const nextHasReacted = !item.viewerHasReacted;
-
-      pendingReactionPhotoIds.current.add(item.photoId);
-
-      // Optimistic: the feed should feel instant, and a failure reverts to the exact
-      // prior state rather than a fresh refetch.
-      applyReactionState(item.photoId, nextHasReacted);
-
-      try {
-        if (nextHasReacted) {
-          await addPhotoReaction(item.photoId);
-        } else {
-          await removePhotoReaction(item.photoId);
-        }
-      } catch {
-        applyReactionState(item.photoId, item.viewerHasReacted);
-      } finally {
-        pendingReactionPhotoIds.current.delete(item.photoId);
-      }
-    },
-    [applyReactionState],
-  );
+    setFeed((currentFeed) =>
+      currentFeed.map((item) =>
+        item.photoId === composerPhotoId
+          ? {
+              ...item,
+              realMojis: item.realMojis.filter((realMoji) => !realMoji.isOwn),
+            }
+          : item,
+      ),
+    );
+  }, [composerPhotoId]);
 
   const navigateToPhotoDetail = useCallback((item: FriendsFeedItem) => {
     router.push({
@@ -199,8 +184,6 @@ export default function HomeScreen() {
         imageUrl: item.imageUrl,
         photoId: item.photoId,
         profileId: item.profileId,
-        reactionCount: String(item.reactionCount),
-        viewerHasReacted: String(item.viewerHasReacted),
       },
       pathname: '/photo-detail',
     });
@@ -253,27 +236,10 @@ export default function HomeScreen() {
       </Pressable>
 
       <View style={styles.reactionRow}>
-        <Pressable
-          accessibilityLabel="😂でリアクションする"
-          accessibilityRole="button"
-          accessibilityState={{ selected: item.viewerHasReacted }}
-          onPress={() => handleToggleReaction(item)}
-          style={({ pressed }) => [
-            styles.reactionButton,
-            item.viewerHasReacted && styles.reactionButtonActive,
-            pressed && styles.reactionButtonPressed,
-          ]}
-        >
-          <Text style={styles.reactionEmoji}>😂</Text>
-          <Text
-            style={[
-              styles.reactionCount,
-              item.viewerHasReacted && styles.reactionCountActive,
-            ]}
-          >
-            {item.reactionCount}
-          </Text>
-        </Pressable>
+        <PhotoRealMojiBar
+          onCompose={() => setComposerPhotoId(item.photoId)}
+          realMojis={item.realMojis}
+        />
 
         <Pressable
           accessibilityLabel="コメントを見る"
@@ -357,6 +323,19 @@ export default function HomeScreen() {
 
         <BottomNav activeRoute="/home" />
       </View>
+
+      {!!composerPhotoId && (
+        <RealMojiComposer
+          existingRealMoji={feed
+            .find((item) => item.photoId === composerPhotoId)
+            ?.realMojis.find((realMoji) => realMoji.isOwn)}
+          onClose={() => setComposerPhotoId(null)}
+          onRemoved={handleRealMojiRemoved}
+          onSaved={handleRealMojiSaved}
+          photoId={composerPhotoId}
+          visible
+        />
+      )}
     </SafeAreaView>
   );
 }
@@ -473,37 +452,14 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   reactionRow: {
-    flexDirection: 'row',
-    paddingTop: 10,
-  },
-  reactionButton: {
     alignItems: 'center',
-    backgroundColor: '#fafafa',
-    borderColor: '#f1f1f1',
-    borderRadius: 18,
-    borderWidth: 1,
     flexDirection: 'row',
-    gap: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-  },
-  reactionButtonActive: {
-    backgroundColor: '#fff7ed',
-    borderColor: '#fb923c',
+    gap: 12,
+    justifyContent: 'space-between',
+    paddingTop: 10,
   },
   reactionButtonPressed: {
     opacity: 0.7,
-  },
-  reactionEmoji: {
-    fontSize: 15,
-  },
-  reactionCount: {
-    color: '#737373',
-    fontSize: 13,
-    fontWeight: '700',
-  },
-  reactionCountActive: {
-    color: '#c2410c',
   },
   commentButton: {
     alignItems: 'center',

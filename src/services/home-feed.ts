@@ -1,5 +1,9 @@
 import { supabase } from '@/lib/supabase';
 import { listFriendRelations, resolveFriendProfileId } from '@/services/friend';
+import {
+  listPhotoRealMojis,
+  type PhotoRealMoji,
+} from '@/services/photo-realmojis';
 import { toProfileIconValue } from '@/services/user';
 
 export type FriendsFeedItem = {
@@ -10,8 +14,7 @@ export type FriendsFeedItem = {
   displayName: string;
   // Either a preset icon identifier or a custom photo URL — see isCustomProfilePhotoUrl.
   iconId: string;
-  reactionCount: number;
-  viewerHasReacted: boolean;
+  realMojis: PhotoRealMoji[];
   commentCount: number;
 };
 
@@ -28,11 +31,6 @@ type ProfileRow = {
   id: string;
   display_name: string;
   icon_url: string | null;
-};
-
-type ReactionRow = {
-  photo_id: string;
-  profile_id: string;
 };
 
 type CommentCountRow = {
@@ -119,27 +117,20 @@ export async function listFriendsFeed(): Promise<FriendsFeedItem[]> {
 
   const photoIds = photos.map((photo) => photo.id);
 
-  const { data: reactionRows, error: reactionError } = await supabase
-    .from('photo_reactions')
-    .select('photo_id, profile_id')
-    .in('photo_id', photoIds);
+  let realMojis: PhotoRealMoji[];
 
-  if (reactionError) {
-    throw mapHomeFeedError(reactionError);
+  try {
+    realMojis = await listPhotoRealMojis(photoIds);
+  } catch (error) {
+    throw mapHomeFeedError(error);
   }
 
-  const reactionCountByPhotoId = new Map<string, number>();
-  const viewerReactedPhotoIds = new Set<string>();
+  const realMojisByPhotoId = new Map<string, PhotoRealMoji[]>();
 
-  for (const reaction of (reactionRows ?? []) as ReactionRow[]) {
-    reactionCountByPhotoId.set(
-      reaction.photo_id,
-      (reactionCountByPhotoId.get(reaction.photo_id) ?? 0) + 1,
-    );
-
-    if (reaction.profile_id === profileId) {
-      viewerReactedPhotoIds.add(reaction.photo_id);
-    }
+  for (const realMoji of realMojis) {
+    const photoRealMojis = realMojisByPhotoId.get(realMoji.photoId) ?? [];
+    photoRealMojis.push(realMoji);
+    realMojisByPhotoId.set(realMoji.photoId, photoRealMojis);
   }
 
   const { data: commentRows, error: commentError } = await supabase
@@ -171,8 +162,7 @@ export async function listFriendsFeed(): Promise<FriendsFeedItem[]> {
       imageUrl: photo.image_url,
       photoId: photo.id,
       profileId: photo.profile_id,
-      reactionCount: reactionCountByPhotoId.get(photo.id) ?? 0,
-      viewerHasReacted: viewerReactedPhotoIds.has(photo.id),
+      realMojis: realMojisByPhotoId.get(photo.id) ?? [],
     };
   });
 }

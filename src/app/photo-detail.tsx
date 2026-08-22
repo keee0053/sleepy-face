@@ -1,7 +1,7 @@
 import { Image } from 'expo-image';
 import { router, useLocalSearchParams } from 'expo-router';
 import { SymbolView } from 'expo-symbols';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
@@ -17,6 +17,8 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { CommentBubbleIcon } from '@/components/comment-bubble-icon';
+import { PhotoRealMojiBar } from '@/components/photo-realmoji-bar';
+import { RealMojiComposer } from '@/components/realmoji-composer';
 import { getProfileIconSource } from '@/constants/profile-icons';
 import {
   CommentServiceError,
@@ -25,9 +27,9 @@ import {
   type Comment,
 } from '@/services/comments';
 import {
-  addPhotoReaction,
-  removePhotoReaction,
-} from '@/services/photo-reactions';
+  listPhotoRealMojis,
+  type PhotoRealMoji,
+} from '@/services/photo-realmojis';
 
 function formatPostDate(isoDate: string): string {
   const date = new Date(isoDate);
@@ -70,22 +72,16 @@ export default function PhotoDetailScreen() {
     iconId: string;
     imageUrl: string;
     createdAt: string;
-    reactionCount: string;
-    viewerHasReacted: string;
   }>();
 
   const [comments, setComments] = useState<Comment[]>([]);
+  const [realMojis, setRealMojis] = useState<PhotoRealMoji[]>([]);
   const [isLoadingComments, setIsLoadingComments] = useState(true);
+  const [isLoadingRealMojis, setIsLoadingRealMojis] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [commentText, setCommentText] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [reactionCount, setReactionCount] = useState(
-    Number(params.reactionCount) || 0,
-  );
-  const [viewerHasReacted, setViewerHasReacted] = useState(
-    params.viewerHasReacted === 'true',
-  );
-  const isReactionPending = useRef(false);
+  const [isComposerVisible, setIsComposerVisible] = useState(false);
 
   useEffect(() => {
     let isActive = true;
@@ -112,30 +108,47 @@ export default function PhotoDetailScreen() {
     };
   }, [params.photoId]);
 
-  const handleToggleReaction = useCallback(async () => {
-    if (isReactionPending.current) {
-      return;
-    }
+  useEffect(() => {
+    let isActive = true;
 
-    const nextHasReacted = !viewerHasReacted;
+    listPhotoRealMojis([params.photoId])
+      .then((nextRealMojis) => {
+        if (isActive) {
+          setRealMojis(nextRealMojis);
+        }
+      })
+      .catch(() => {
+        if (isActive) {
+          setErrorMessage(
+            'RealMojiを読み込めませんでした。もう一度お試しください。',
+          );
+        }
+      })
+      .finally(() => {
+        if (isActive) {
+          setIsLoadingRealMojis(false);
+        }
+      });
 
-    isReactionPending.current = true;
-    setViewerHasReacted(nextHasReacted);
-    setReactionCount((count) => count + (nextHasReacted ? 1 : -1));
+    return () => {
+      isActive = false;
+    };
+  }, [params.photoId]);
 
-    try {
-      if (nextHasReacted) {
-        await addPhotoReaction(params.photoId);
-      } else {
-        await removePhotoReaction(params.photoId);
-      }
-    } catch {
-      setViewerHasReacted(!nextHasReacted);
-      setReactionCount((count) => count + (nextHasReacted ? -1 : 1));
-    } finally {
-      isReactionPending.current = false;
-    }
-  }, [params.photoId, viewerHasReacted]);
+  const handleRealMojiSaved = useCallback((realMoji: PhotoRealMoji) => {
+    setRealMojis((currentRealMojis) => [
+      ...currentRealMojis.filter(
+        (item) => item.profileId !== realMoji.profileId,
+      ),
+      realMoji,
+    ]);
+  }, []);
+
+  const handleRealMojiRemoved = useCallback(() => {
+    setRealMojis((currentRealMojis) =>
+      currentRealMojis.filter((realMoji) => !realMoji.isOwn),
+    );
+  }, []);
 
   const handleSendComment = useCallback(async () => {
     setErrorMessage(null);
@@ -243,19 +256,10 @@ export default function PhotoDetailScreen() {
               />
 
               <View style={styles.reactionRow}>
-                <Pressable
-                  accessibilityLabel="😂でリアクションする"
-                  accessibilityRole="button"
-                  accessibilityState={{ selected: viewerHasReacted }}
-                  onPress={handleToggleReaction}
-                  style={({ pressed }) => [
-                    styles.reactionButton,
-                    pressed && styles.reactionButtonPressed,
-                  ]}
-                >
-                  <Text style={styles.reactionEmoji}>😂</Text>
-                  <Text style={styles.reactionCount}>{reactionCount}</Text>
-                </Pressable>
+                <PhotoRealMojiBar
+                  onCompose={() => setIsComposerVisible(true)}
+                  realMojis={realMojis}
+                />
 
                 <View style={styles.commentCountBadge}>
                   <CommentBubbleIcon color="#737373" size={20} />
@@ -263,7 +267,7 @@ export default function PhotoDetailScreen() {
                 </View>
               </View>
 
-              {isLoadingComments && (
+              {(isLoadingComments || isLoadingRealMojis) && (
                 <View style={styles.loadingBox}>
                   <ActivityIndicator color="#171717" />
                 </View>
@@ -304,6 +308,15 @@ export default function PhotoDetailScreen() {
           </Pressable>
         </View>
       </KeyboardAvoidingView>
+
+      <RealMojiComposer
+        existingRealMoji={realMojis.find((realMoji) => realMoji.isOwn)}
+        onClose={() => setIsComposerVisible(false)}
+        onRemoved={handleRealMojiRemoved}
+        onSaved={handleRealMojiSaved}
+        photoId={params.photoId}
+        visible={isComposerVisible}
+      />
     </SafeAreaView>
   );
 }
@@ -385,25 +398,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     flexDirection: 'row',
     gap: 12,
+    justifyContent: 'space-between',
     paddingHorizontal: 16,
     paddingVertical: 10,
-  },
-  reactionButton: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    gap: 6,
-    paddingVertical: 4,
-  },
-  reactionButtonPressed: {
-    opacity: 0.6,
-  },
-  reactionEmoji: {
-    fontSize: 20,
-  },
-  reactionCount: {
-    color: '#171717',
-    fontSize: 14,
-    fontWeight: '700',
   },
   commentCountBadge: {
     alignItems: 'center',
