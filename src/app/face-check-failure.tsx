@@ -2,6 +2,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
+import { stopRingingAlarm } from '@/services/android-alarm-mechanics';
 import { useAlarmTimer } from '@/services/alarm-timer';
 
 export default function FaceCheckFailureScreen() {
@@ -13,6 +14,10 @@ export default function FaceCheckFailureScreen() {
 
   useEffect(() => {
     if (timer?.status === 'expired') {
+      // The alarm rings through Face Check by design (see face-check.tsx), stopping only
+      // on a pass or the 3rd bad photo -- if the Alarm Timer expires first instead, it's
+      // still ringing and nothing else will ever silence it.
+      stopRingingAlarm().catch(() => {});
       router.replace({
         pathname: '/quiz-failure',
         params: { reason: 'no-photo-timeout' },

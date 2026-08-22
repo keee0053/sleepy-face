@@ -17,6 +17,7 @@ import {
 import {
   AndroidAlarmMechanicsError,
   getRingingAlarmState,
+  stopRingingAlarm,
   type RingingAlarmState,
 } from '@/services/android-alarm-mechanics';
 import {
@@ -159,6 +160,10 @@ export default function RingingScreen() {
 
   useEffect(() => {
     if (timer?.status === 'expired') {
+      // The alarm has been ringing since it fired -- if the Alarm Timer expires before
+      // the user ever taps "start challenge" (the only other place that stops it, in
+      // face-check.tsx), nothing else will ever silence it.
+      stopRingingAlarm().catch(() => {});
       router.replace({
         pathname: '/quiz-failure',
         params: { reason: 'no-photo-timeout' },

@@ -45,7 +45,13 @@ export default function QuizFailureScreen() {
   useEffect(() => {
     clearWakeChallengeAttempt().catch(() => {});
     recordFailureAccessOutcome(failureReason).catch(() => {});
-    recordFailureEvent(failureReason).catch(() => {});
+    recordFailureEvent(failureReason).catch((error) => {
+      console.log(
+        '[DEBUG-fle1] recordFailureEvent failed',
+        failureReason,
+        error,
+      );
+    });
   }, [failureReason]);
 
   return (
