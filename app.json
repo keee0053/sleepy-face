@@ -36,7 +36,7 @@
       [
         "expo-camera",
         {
-          "cameraPermission": "眠そうな顔が起床確認用の写真を撮影するためにカメラを使用します。",
+          "cameraPermission": "起床確認とRealMoji用の顔写真を撮影するためにカメラを使用します。",
           "recordAudioAndroid": false
         }
       ],
