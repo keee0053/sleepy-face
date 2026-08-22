@@ -7,6 +7,7 @@ const mocks = vi.hoisted(() => ({
   getUser: vi.fn(),
   in: vi.fn(),
   listFriendRelations: vi.fn(),
+  listPhotoRealMojis: vi.fn(),
   order: vi.fn(),
   select: vi.fn(),
 }));
@@ -29,6 +30,10 @@ vi.mock('@/services/friend', async () => {
   };
 });
 
+vi.mock('@/services/photo-realmojis', () => ({
+  listPhotoRealMojis: mocks.listPhotoRealMojis,
+}));
+
 function mockAuthenticatedUser(id = 'profile-a') {
   mocks.getUser.mockResolvedValue({
     data: { user: { id } },
@@ -47,6 +52,7 @@ function expectServiceError(
 describe('home feed service', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mocks.listPhotoRealMojis.mockResolvedValue([]);
   });
 
   it('returns an empty feed when the user has no friends', async () => {
@@ -94,14 +100,21 @@ describe('home feed service', () => {
     });
     const profilesSelect = vi.fn().mockReturnValue({ in: profilesIn });
 
-    const reactionsIn = vi.fn().mockResolvedValue({
-      data: [
-        { photo_id: 'photo-1', profile_id: 'profile-a' },
-        { photo_id: 'photo-1', profile_id: 'profile-c' },
-      ],
-      error: null,
-    });
-    const reactionsSelect = vi.fn().mockReturnValue({ in: reactionsIn });
+    const realMojis = [
+      {
+        createdAt: '2026-08-19T00:01:00.000Z',
+        displayName: '自分',
+        emoji: '😂',
+        iconId: 'human',
+        id: 'realmoji-1',
+        imageUrl: 'https://storage.example/realmoji-1.jpg',
+        isOwn: true,
+        photoId: 'photo-1',
+        profileId: 'profile-a',
+        updatedAt: '2026-08-19T00:01:00.000Z',
+      },
+    ];
+    mocks.listPhotoRealMojis.mockResolvedValue(realMojis);
 
     const commentsIn = vi.fn().mockResolvedValue({
       data: [
@@ -122,10 +135,6 @@ describe('home feed service', () => {
         return { select: profilesSelect };
       }
 
-      if (table === 'photo_reactions') {
-        return { select: reactionsSelect };
-      }
-
       if (table === 'comments') {
         return { select: commentsSelect };
       }
@@ -142,8 +151,7 @@ describe('home feed service', () => {
         imageUrl: 'https://storage.example/photo-1.jpg',
         photoId: 'photo-1',
         profileId: 'profile-b',
-        reactionCount: 2,
-        viewerHasReacted: true,
+        realMojis,
       },
     ]);
 
@@ -152,7 +160,7 @@ describe('home feed service', () => {
       ascending: false,
     });
     expect(profilesIn).toHaveBeenCalledWith('id', ['profile-b']);
-    expect(reactionsIn).toHaveBeenCalledWith('photo_id', ['photo-1']);
+    expect(mocks.listPhotoRealMojis).toHaveBeenCalledWith(['photo-1']);
     expect(commentsIn).toHaveBeenCalledWith('photo_id', ['photo-1']);
   });
 
@@ -229,6 +237,44 @@ describe('home feed service', () => {
     mocks.from.mockReturnValue({
       select: vi.fn().mockReturnValue({ in: photosIn }),
     });
+
+    await expect(listFriendsFeed()).rejects.toSatisfy((error) => {
+      expectServiceError(error, 'unexpected_error');
+      return true;
+    });
+  });
+
+  it('wraps a RealMoji loading failure', async () => {
+    mockAuthenticatedUser();
+    mocks.listFriendRelations.mockResolvedValue([
+      {
+        createdAt: '2026-08-18T00:00:00.000Z',
+        friendProfileId: 'profile-b',
+        id: 'relation-1',
+        profileId: 'profile-a',
+      },
+    ]);
+
+    const photosOrder = vi.fn().mockResolvedValue({
+      data: [
+        {
+          created_at: '2026-08-19T00:00:00.000Z',
+          id: 'photo-1',
+          image_url: 'https://storage.example/photo-1.jpg',
+          profile_id: 'profile-b',
+        },
+      ],
+      error: null,
+    });
+    const photosIn = vi.fn().mockReturnValue({ order: photosOrder });
+    const profilesIn = vi.fn().mockResolvedValue({ data: [], error: null });
+
+    mocks.from.mockImplementation((table: string) => ({
+      select: vi.fn().mockReturnValue({
+        in: table === 'photos' ? photosIn : profilesIn,
+      }),
+    }));
+    mocks.listPhotoRealMojis.mockRejectedValue(new Error('RealMoji failed'));
 
     await expect(listFriendsFeed()).rejects.toSatisfy((error) => {
       expectServiceError(error, 'unexpected_error');
