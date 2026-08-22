@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1040144669843",
+    "project_id": "sleepy-face",
+    "storage_bucket": "sleepy-face.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1040144669843:android:a3c5324a78e05e6d5a4166",
+        "android_client_info": {
+          "package_name": "com.team5.sleepyface"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBDlz07GzGu9x8wHgSH3jVA9-Zt1I1ZCUs"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

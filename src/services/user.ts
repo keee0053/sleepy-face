@@ -27,11 +27,24 @@ export function toProfileIconId(
     : DEFAULT_PROFILE_ICON_ID;
 }
 
+// A custom profile photo is stored in `icon_url` as its Storage public URL, alongside the
+// 8 preset icon identifiers (see PROFILE_ICON_IDS) that also live in that same column.
+export function isCustomProfilePhotoUrl(value: string): boolean {
+  return value.startsWith('https://') || value.startsWith('http://');
+}
+
+// Reads `icon_url` as-is (preset identifier or custom photo URL), unlike toProfileIconId
+// which collapses anything unrecognized down to the default preset.
+export function toProfileIconValue(value: string | null | undefined): string {
+  return value != null && value.length > 0 ? value : DEFAULT_PROFILE_ICON_ID;
+}
+
 export type Profile = {
   id: string;
   userId: string;
   displayName: string;
-  iconId: ProfileIconId;
+  // Either one of PROFILE_ICON_IDS or a custom photo URL — see isCustomProfilePhotoUrl.
+  iconId: string;
   createdAt: string;
 };
 
@@ -59,7 +72,8 @@ export type InitialSetupValidationResult =
 
 export type UpdateProfileInput = {
   displayName: string;
-  iconId: ProfileIconId;
+  // Either one of PROFILE_ICON_IDS or a custom photo URL — see isCustomProfilePhotoUrl.
+  iconId: string;
 };
 
 export type ProfileUpdateValidationErrorCode =
@@ -216,7 +230,7 @@ function mapProfile(row: ProfileRow): Profile {
   return {
     createdAt: row.created_at,
     displayName: row.display_name,
-    iconId: toProfileIconId(row.icon_url),
+    iconId: toProfileIconValue(row.icon_url),
     id: row.id,
     userId: row.user_id,
   };
@@ -226,7 +240,7 @@ function mapCreatedProfile(row: CreateProfileRpcData): Profile {
   return {
     createdAt: row.created_at,
     displayName: row.display_name,
-    iconId: toProfileIconId(row.icon_url),
+    iconId: toProfileIconValue(row.icon_url),
     id: row.profile_id,
     userId: row.user_id,
   };
@@ -342,6 +356,50 @@ export async function createProfile({
       'Profile creation returned an invalid response.',
       error,
     );
+  }
+}
+
+export type CompleteInitialProfileSetupInput = {
+  displayName: string;
+  publicUserId: string;
+  // Either one of PROFILE_ICON_IDS or a custom photo URL — see isCustomProfilePhotoUrl.
+  iconId: string;
+};
+
+// create_profile only accepts a known preset icon identifier; a custom photo goes through
+// the profiles.icon_url update path right after the Profile row exists. If createProfile
+// reports the row already exists (e.g. a retry after a previous attempt's photo attach
+// failed), the pending custom photo is still attached here rather than silently dropped.
+export async function completeInitialProfileSetup({
+  displayName,
+  iconId,
+  publicUserId,
+}: CompleteInitialProfileSetupInput): Promise<void> {
+  const isCustomPhoto = isCustomProfilePhotoUrl(iconId);
+
+  try {
+    await createProfile({
+      displayName,
+      iconId: toProfileIconId(iconId),
+      publicUserId,
+    });
+  } catch (error) {
+    if (
+      error instanceof UserServiceError &&
+      error.code === 'profile_already_created'
+    ) {
+      if (isCustomPhoto) {
+        await updateProfile({ displayName, iconId });
+      }
+
+      return;
+    }
+
+    throw error;
+  }
+
+  if (isCustomPhoto) {
+    await updateProfile({ displayName, iconId });
   }
 }
 

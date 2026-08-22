@@ -1,5 +1,7 @@
-import { ActivityIndicator, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+
+import { LoadingState } from '@/components/loading';
 
 // The Google OAuth redirect lands here (`sleepyface://google-auth`) because the app's
 // Android intent-filter matches the whole `sleepyface://` scheme, not just the specific
@@ -12,7 +14,7 @@ export default function GoogleAuthScreen() {
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.container}>
-        <ActivityIndicator color="#536dfe" />
+        <LoadingState message="ログインを確認しています..." variant="screen" />
       </View>
     </SafeAreaView>
   );

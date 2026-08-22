@@ -3,7 +3,6 @@ import { router } from 'expo-router';
 import { SymbolView } from 'expo-symbols';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  ActivityIndicator,
   FlatList,
   Pressable,
   StyleSheet,
@@ -14,6 +13,8 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { LoadingButtonContent } from '@/components/loading';
+import { FriendListLoadingSkeleton } from '@/components/loading-skeletons';
 import { PROFILE_ICON_SOURCES } from '@/constants/profile-icons';
 import {
   FriendServiceError,
@@ -201,9 +202,17 @@ export default function AddFriendScreen() {
             (isFriend || isAdding) && styles.addButtonDisabled,
           ]}
         >
-          <Text style={styles.addButtonText}>
-            {isFriend ? '追加済み' : isAdding ? '追加中...' : '追加'}
-          </Text>
+          {isFriend ? (
+            <Text style={styles.addButtonText}>追加済み</Text>
+          ) : (
+            <LoadingButtonContent
+              label="追加"
+              loading={isAdding}
+              loadingLabel=""
+              textStyle={styles.addButtonText}
+              tone="light"
+            />
+          )}
         </Pressable>
       </View>
     );
@@ -232,10 +241,7 @@ export default function AddFriendScreen() {
 
         <View style={styles.content}>
           {isLoadingRelations ? (
-            <View style={styles.loadingBox}>
-              <ActivityIndicator color="#171717" />
-              <Text style={styles.loadingText}>友達情報を確認中...</Text>
-            </View>
+            <FriendListLoadingSkeleton />
           ) : (
             <FlatList
               contentContainerStyle={styles.resultList}
@@ -301,9 +307,13 @@ export default function AddFriendScreen() {
                       isSearching && styles.searchButtonDisabled,
                     ]}
                   >
-                    <Text style={styles.searchButtonText}>
-                      {isSearching ? '検索中...' : '検索'}
-                    </Text>
+                    <LoadingButtonContent
+                      label="検索"
+                      loading={isSearching}
+                      loadingLabel="検索中..."
+                      textStyle={styles.searchButtonText}
+                      tone="light"
+                    />
                   </Pressable>
 
                   {errorMessage && (
@@ -403,15 +413,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 21,
     marginTop: 12,
-  },
-  loadingBox: {
-    alignItems: 'center',
-    gap: 10,
-    paddingVertical: 40,
-  },
-  loadingText: {
-    color: '#737373',
-    fontSize: 14,
   },
   listHeader: {
     paddingBottom: 4,

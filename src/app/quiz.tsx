@@ -1,10 +1,12 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 import {
   ActionButton,
   formatRemainingTime,
+  getRemainingMs,
 } from '@/components/wake-challenge-ui';
 import { resumeTimer, useAlarmTimer } from '@/services/alarm-timer';
 import { getDevMode } from '@/services/dev-mode';
@@ -19,6 +21,8 @@ import {
   type QuizKeypadKey,
 } from '@/services/quiz-keypad';
 import type { WakeChallengeFailureReason } from '@/services/wake-challenge-rules';
+
+const TIMER_WARNING_THRESHOLD_MS = 60_000;
 
 const KEYPAD_KEYS: QuizKeypadKey[] = [
   '1',
@@ -153,16 +157,22 @@ export default function QuizScreen() {
   }
 
   const isActive = quizState.status === 'active';
+  const isTimeRunningLow = getRemainingMs(timer) < TIMER_WARNING_THRESHOLD_MS;
 
   return (
-    <View style={styles.screen}>
+    <SafeAreaView edges={['top', 'bottom']} style={styles.screen}>
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         style={styles.scroll}
       >
         <View style={styles.header}>
           <View style={styles.timerPill}>
-            <Text style={styles.timerPillText}>
+            <Text
+              style={[
+                styles.timerPillText,
+                isTimeRunningLow && styles.timerPillTextWarning,
+              ]}
+            >
               あと {formatRemainingTime(timer)}
             </Text>
           </View>
@@ -258,7 +268,7 @@ export default function QuizScreen() {
           </View>
         </View>
       </ScrollView>
-    </View>
+    </SafeAreaView>
   );
 }
 
@@ -292,7 +302,6 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
-    justifyContent: 'space-between',
     paddingBottom: 24,
     paddingHorizontal: 24,
     paddingTop: 40,
@@ -313,17 +322,17 @@ const styles = StyleSheet.create({
   grid: {
     borderColor: '#f5f5f5',
     borderTopWidth: 1,
+    flex: 1,
     flexDirection: 'row',
     flexWrap: 'wrap',
   },
   gridCell: {
     alignItems: 'center',
-    aspectRatio: 1,
     borderColor: '#f5f5f5',
     borderRightWidth: 1,
     borderTopWidth: 1,
+    height: '25%',
     justifyContent: 'center',
-    minHeight: 56,
     width: '33.3333%',
   },
   gridCellPressed: {
@@ -357,6 +366,7 @@ const styles = StyleSheet.create({
     fontWeight: '800',
   },
   keypadGroup: {
+    flex: 1,
     gap: 20,
   },
   progress: {
@@ -401,5 +411,8 @@ const styles = StyleSheet.create({
     color: '#171717',
     fontSize: 17,
     fontWeight: '800',
+  },
+  timerPillTextWarning: {
+    color: '#dc2626',
   },
 });

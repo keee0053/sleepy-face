@@ -67,6 +67,9 @@ export async function startGoogleLogin(): Promise<GoogleLoginResult> {
       options: {
         redirectTo: GOOGLE_AUTH_REDIRECT_URL,
         skipBrowserRedirect: true,
+        queryParams: {
+          prompt: 'select_account',
+        },
       },
     });
 

@@ -37,7 +37,7 @@ This loop is intentionally narrow:
 - Friendships are mutual immediately.
 - There are no friend requests in the MVP.
 - The Friends Feed is not public.
-- There are no comments, reactions, rankings, or reports in the MVP.
+- A viewer can react to a friend's Failure Card with a single 😂 reaction (toggle, not a multi-emoji picker) and can leave comments on it from the photo's detail screen; there are no threaded comment replies, rankings, or reports in the MVP.
 
 ## Scope Philosophy
 

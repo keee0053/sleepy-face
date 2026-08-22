@@ -1,11 +1,13 @@
-import { ActivityIndicator, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+
+import { LoadingState } from '@/components/loading';
 
 export default function Index() {
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.container}>
-        <ActivityIndicator color="#536dfe" />
+        <LoadingState message="起動しています..." variant="screen" />
       </View>
     </SafeAreaView>
   );

@@ -1,14 +1,8 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
-import {
-  ActivityIndicator,
-  Image,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
+import { Image, ScrollView, StyleSheet, Text, View } from 'react-native';
 
+import { LoadingIndicator } from '@/components/loading';
 import { ActionButton, challengeStyles } from '@/components/wake-challenge-ui';
 import { recordFailureAccessOutcome } from '@/services/friends-feed-access';
 import { recordQuizFailurePhoto } from '@/services/quiz';
@@ -110,7 +104,10 @@ export default function QuizFailurePhotoScreen() {
               />
               {uploadStatus === 'checking' && (
                 <View style={styles.photoOverlay}>
-                  <ActivityIndicator color="#ffffff" />
+                  <LoadingIndicator
+                    accessibilityLabel="写真を送信中"
+                    tone="light"
+                  />
                 </View>
               )}
             </View>

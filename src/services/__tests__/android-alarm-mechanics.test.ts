@@ -77,7 +77,10 @@ describe('Android Alarm Mechanics service', () => {
     await expect(androidAlarmMechanics.scheduleTestAlarm()).resolves.toEqual(
       schedule,
     );
-    expect(nativeModule.scheduleTestAlarmAfterSeconds).toHaveBeenCalledWith(20);
+    expect(nativeModule.scheduleTestAlarmAfterSeconds).toHaveBeenCalledWith(
+      20,
+      null,
+    );
   });
 
   it('maps native already-ringing errors to typed service errors', async () => {
@@ -154,6 +157,7 @@ describe('Android Alarm Mechanics service', () => {
     expect(nativeModule.scheduleSavedAlarmOccurrence).toHaveBeenCalledWith(
       'saved-alarm-1',
       1755756000000,
+      null,
     );
   });
 
@@ -184,11 +188,13 @@ describe('Android Alarm Mechanics service', () => {
       1,
       'alarm-a',
       1000,
+      null,
     );
     expect(nativeModule.scheduleSavedAlarmOccurrence).toHaveBeenNthCalledWith(
       2,
       'alarm-b',
       2000,
+      null,
     );
   });
 

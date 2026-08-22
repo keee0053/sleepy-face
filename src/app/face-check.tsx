@@ -2,7 +2,6 @@ import { CameraView, useCameraPermissions } from 'expo-camera';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import {
-  ActivityIndicator,
   Pressable,
   SafeAreaView,
   ScrollView,
@@ -11,6 +10,7 @@ import {
   View,
 } from 'react-native';
 
+import { FaceCheckLoading, LoadingButtonContent } from '@/components/loading';
 import {
   ALARM_TIMER_SECONDS,
   MAX_BAD_PHOTO_ATTEMPTS,
@@ -55,6 +55,7 @@ export default function FaceCheckScreen() {
   const [isCameraOpen, setIsCameraOpen] = useState(false);
   const [message, setMessage] = useState('顔が写るように撮影してください。');
   const [isBusy, setIsBusy] = useState(false);
+  const [isOpeningCamera, setIsOpeningCamera] = useState(false);
   const badPhotoAttempts = Number(params.badPhotoAttempts ?? '0') || 0;
 
   useEffect(() => {
@@ -89,6 +90,10 @@ export default function FaceCheckScreen() {
   }, [timer?.status]);
 
   async function openCamera() {
+    if (isOpeningCamera) {
+      return;
+    }
+
     if (getAlarmTimerState()?.status === 'expired') {
       router.replace({
         pathname: '/quiz-failure',
@@ -97,17 +102,23 @@ export default function FaceCheckScreen() {
       return;
     }
 
-    if (!permission?.granted) {
-      const nextPermission = await requestPermission();
+    setIsOpeningCamera(true);
 
-      if (!nextPermission.granted) {
-        setMessage('カメラ権限が必要です。');
-        return;
+    try {
+      if (!permission?.granted) {
+        const nextPermission = await requestPermission();
+
+        if (!nextPermission.granted) {
+          setMessage('カメラ権限が必要です。');
+          return;
+        }
       }
-    }
 
-    setIsCameraOpen(true);
-    setMessage('写真を撮影してください。');
+      setIsCameraOpen(true);
+      setMessage('写真を撮影してください。');
+    } finally {
+      setIsOpeningCamera(false);
+    }
   }
 
   async function takePhoto() {
@@ -174,6 +185,7 @@ export default function FaceCheckScreen() {
     return (
       <View style={styles.cameraContainer}>
         <CameraView ref={cameraRef} facing="front" style={styles.camera} />
+        {isBusy && <FaceCheckLoading />}
         <SafeAreaView style={styles.cameraTimerOverlay}>
           <Text style={styles.cameraTimer}>{formatRemainingTime(timer)}</Text>
         </SafeAreaView>
@@ -188,9 +200,7 @@ export default function FaceCheckScreen() {
               isBusy && styles.buttonDisabled,
             ]}
           >
-            <View style={styles.shutterInner}>
-              {isBusy && <ActivityIndicator color="#171717" />}
-            </View>
+            <View style={styles.shutterInner} />
           </Pressable>
         </SafeAreaView>
       </View>
@@ -232,19 +242,20 @@ export default function FaceCheckScreen() {
 
         <Pressable
           accessibilityRole="button"
-          disabled={isBusy}
+          disabled={isOpeningCamera}
           onPress={openCamera}
           style={({ pressed }) => [
             styles.button,
             pressed && styles.buttonPressed,
-            isBusy && styles.buttonDisabled,
+            isOpeningCamera && styles.buttonDisabled,
           ]}
         >
-          {isBusy ? (
-            <ActivityIndicator color="#171717" />
-          ) : (
-            <Text style={styles.buttonText}>カメラを起動</Text>
-          )}
+          <LoadingButtonContent
+            label="カメラを起動"
+            loading={isOpeningCamera}
+            loadingLabel="起動中..."
+            textStyle={styles.buttonText}
+          />
         </Pressable>
       </ScrollView>
     </View>

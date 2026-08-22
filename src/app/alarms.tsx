@@ -1,7 +1,6 @@
 import { router } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import {
-  ActivityIndicator,
   FlatList,
   Pressable,
   StyleSheet,
@@ -12,6 +11,13 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { BottomNav } from '@/components/bottom-nav';
+import { AlarmListLoadingSkeleton } from '@/components/loading-skeletons';
+import {
+  ALARM_SOUND_IDS,
+  ALARM_SOUND_LABELS,
+  DEFAULT_ALARM_SOUND_ID,
+  type AlarmSoundId,
+} from '@/constants/alarm-sounds';
 import {
   AndroidAlarmMechanicsError,
   ensureAlarmPermissions,
@@ -95,6 +101,9 @@ export default function AlarmsScreen() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [updatingAlarmId, setUpdatingAlarmId] = useState<string | null>(null);
   const [isDevMode, setIsDevMode] = useState(false);
+  const [devTestSoundId, setDevTestSoundId] = useState<AlarmSoundId>(
+    DEFAULT_ALARM_SOUND_ID,
+  );
 
   useEffect(() => {
     let isActive = true;
@@ -203,7 +212,7 @@ export default function AlarmsScreen() {
         return;
       }
 
-      await scheduleTestAlarm();
+      await scheduleTestAlarm(devTestSoundId);
       setSuccessMessage('20秒後にテストアラームが鳴ります。');
     } catch (error) {
       if (error instanceof AndroidAlarmMechanicsError) {
@@ -213,7 +222,7 @@ export default function AlarmsScreen() {
 
       setErrorMessage(getAlarmErrorMessage(error));
     }
-  }, []);
+  }, [devTestSoundId]);
 
   const handleClearFiredToday = useCallback(async (alarmId: string) => {
     setErrorMessage(null);
@@ -335,6 +344,36 @@ export default function AlarmsScreen() {
           )}
         </View>
 
+        {isDevMode && (
+          <View style={styles.devSoundRow}>
+            {ALARM_SOUND_IDS.map((id) => {
+              const isSelected = id === devTestSoundId;
+
+              return (
+                <Pressable
+                  accessibilityRole="radio"
+                  accessibilityState={{ selected: isSelected }}
+                  key={id}
+                  onPress={() => setDevTestSoundId(id)}
+                  style={[
+                    styles.devSoundOption,
+                    isSelected && styles.devSoundOptionSelected,
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.devSoundOptionText,
+                      isSelected && styles.devSoundOptionTextSelected,
+                    ]}
+                  >
+                    {ALARM_SOUND_LABELS[id]}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+        )}
+
         <View style={styles.content}>
           {errorMessage && <Text style={styles.errorText}>{errorMessage}</Text>}
           {successMessage && (
@@ -342,10 +381,7 @@ export default function AlarmsScreen() {
           )}
 
           {isLoading ? (
-            <View style={styles.loadingBox}>
-              <ActivityIndicator color="#171717" />
-              <Text style={styles.loadingText}>アラームを読み込み中...</Text>
-            </View>
+            <AlarmListLoadingSkeleton />
           ) : (
             <FlatList
               contentContainerStyle={styles.alarmList}
@@ -410,6 +446,32 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '700',
   },
+  devSoundRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+    paddingHorizontal: 16,
+    paddingTop: 10,
+  },
+  devSoundOption: {
+    borderColor: '#e5e5e5',
+    borderRadius: 14,
+    borderWidth: 1,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+  },
+  devSoundOptionSelected: {
+    backgroundColor: '#b42318',
+    borderColor: '#b42318',
+  },
+  devSoundOptionText: {
+    color: '#b42318',
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  devSoundOptionTextSelected: {
+    color: '#ffffff',
+  },
   content: {
     flex: 1,
     paddingHorizontal: 16,
@@ -426,15 +488,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 21,
     marginBottom: 10,
-  },
-  loadingBox: {
-    alignItems: 'center',
-    gap: 10,
-    paddingVertical: 44,
-  },
-  loadingText: {
-    color: '#737373',
-    fontSize: 14,
   },
   alarmList: {
     gap: 14,

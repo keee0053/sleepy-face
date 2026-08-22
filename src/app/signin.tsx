@@ -16,6 +16,7 @@ import {
   startGoogleLogin,
   warmUpGoogleLogin,
 } from '@/services/auth';
+import { LoadingButtonContent } from '@/components/loading';
 import { getMyProfile } from '@/services/user';
 
 function getLoginErrorMessage(error: unknown): string {
@@ -101,9 +102,12 @@ export default function SigninScreen() {
             ]}
           >
             <Text style={styles.googleMark}>G</Text>
-            <Text style={styles.googleButtonText}>
-              {isLoading ? 'ログイン中...' : 'Googleでログイン'}
-            </Text>
+            <LoadingButtonContent
+              label="Googleでログイン"
+              loading={isLoading}
+              loadingLabel="ログイン中..."
+              textStyle={styles.googleButtonText}
+            />
           </Pressable>
 
           {errorMessage && <Text style={styles.errorText}>{errorMessage}</Text>}

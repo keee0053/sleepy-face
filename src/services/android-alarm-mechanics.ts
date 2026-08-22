@@ -37,8 +37,12 @@ type NativeAndroidAlarmMechanicsModule = {
   scheduleSavedAlarmOccurrence(
     alarmId: string,
     triggerAtMillis: number,
+    soundId: string | null,
   ): Promise<RingingAlarmSchedule>;
-  scheduleTestAlarmAfterSeconds(seconds: number): Promise<RingingAlarmSchedule>;
+  scheduleTestAlarmAfterSeconds(
+    seconds: number,
+    soundId: string | null,
+  ): Promise<RingingAlarmSchedule>;
   stopRingingAlarm(): Promise<void>;
 };
 
@@ -136,9 +140,11 @@ export function requestNotificationPermission(): Promise<NotificationPermissionS
   return callNative((module) => module.requestNotificationPermission());
 }
 
-export function scheduleTestAlarm(): Promise<RingingAlarmSchedule> {
+export function scheduleTestAlarm(
+  soundId: string | null = null,
+): Promise<RingingAlarmSchedule> {
   return callNative((module) =>
-    module.scheduleTestAlarmAfterSeconds(TEST_ALARM_DELAY_SECONDS),
+    module.scheduleTestAlarmAfterSeconds(TEST_ALARM_DELAY_SECONDS, soundId),
   );
 }
 
@@ -153,9 +159,10 @@ export function getRingingAlarmState(): Promise<RingingAlarmState | null> {
 export function scheduleAlarmOccurrence(
   alarmId: string,
   triggerAtMillis: number,
+  soundId: string | null = null,
 ): Promise<RingingAlarmSchedule> {
   return callNative((module) =>
-    module.scheduleSavedAlarmOccurrence(alarmId, triggerAtMillis),
+    module.scheduleSavedAlarmOccurrence(alarmId, triggerAtMillis, soundId),
   );
 }
 

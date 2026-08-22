@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
   UserServiceError,
+  completeInitialProfileSetup,
   createProfile,
   getMyProfile,
   updateProfile,
@@ -326,6 +327,200 @@ describe('user service', () => {
         expectUserServiceError(error, 'unexpected_error');
       },
     );
+  });
+});
+
+function setupUpdateProfileMock(updatedIconUrl: string) {
+  mocks.getUser.mockResolvedValue({
+    data: { user: { id: 'auth-user-id' } },
+    error: null,
+  });
+  mocks.from.mockReturnValue({ update: mocks.update });
+  mocks.update.mockReturnValue({ eq: mocks.eq });
+  mocks.eq.mockReturnValue({ select: mocks.select });
+  mocks.select.mockReturnValue({ single: mocks.single });
+  mocks.single.mockResolvedValue({
+    data: {
+      created_at: '2026-08-16T00:00:00.000Z',
+      display_name: 'Sleepy User',
+      icon_url: updatedIconUrl,
+      id: 'auth-user-id',
+      user_id: 'sleepy-user',
+    },
+    error: null,
+  });
+}
+
+describe('completeInitialProfileSetup', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    setupProfileQuery();
+  });
+
+  it('creates the Profile and does not update it for a preset icon', async () => {
+    mocks.rpc.mockResolvedValue({
+      data: {
+        data: {
+          created_at: '2026-08-16T00:00:00.000Z',
+          display_name: 'Sleepy User',
+          icon_url: 'boy',
+          profile_id: 'auth-user-id',
+          user_id: 'sleepy-user',
+        },
+        status: 'ok',
+      },
+      error: null,
+    });
+
+    await completeInitialProfileSetup({
+      displayName: 'Sleepy User',
+      iconId: 'boy',
+      publicUserId: 'sleepy-user',
+    });
+
+    expect(mocks.rpc).toHaveBeenCalledWith('create_profile', {
+      display_name: 'Sleepy User',
+      icon_id: 'boy',
+      user_id: 'sleepy-user',
+    });
+    expect(mocks.update).not.toHaveBeenCalled();
+  });
+
+  it('attaches a custom photo after creating the Profile', async () => {
+    const photoUrl = 'https://storage.example/auth-user-id/icon.jpg?v=1';
+
+    mocks.rpc.mockResolvedValue({
+      data: {
+        data: {
+          created_at: '2026-08-16T00:00:00.000Z',
+          display_name: 'Sleepy User',
+          icon_url: 'human',
+          profile_id: 'auth-user-id',
+          user_id: 'sleepy-user',
+        },
+        status: 'ok',
+      },
+      error: null,
+    });
+    setupUpdateProfileMock(photoUrl);
+
+    await completeInitialProfileSetup({
+      displayName: 'Sleepy User',
+      iconId: photoUrl,
+      publicUserId: 'sleepy-user',
+    });
+
+    expect(mocks.update).toHaveBeenCalledWith({
+      display_name: 'Sleepy User',
+      icon_url: photoUrl,
+    });
+  });
+
+  it('still attaches the pending custom photo when the Profile already exists', async () => {
+    const photoUrl = 'https://storage.example/auth-user-id/icon.jpg?v=1';
+
+    mocks.rpc.mockResolvedValue({
+      data: {
+        code: 'profile_already_created',
+        error: 'Profile already exists.',
+        status: 'error',
+      },
+      error: null,
+    });
+    setupUpdateProfileMock(photoUrl);
+
+    await completeInitialProfileSetup({
+      displayName: 'Sleepy User',
+      iconId: photoUrl,
+      publicUserId: 'sleepy-user',
+    });
+
+    expect(mocks.update).toHaveBeenCalledWith({
+      display_name: 'Sleepy User',
+      icon_url: photoUrl,
+    });
+  });
+
+  it('surfaces a failed photo attach on the already-created path instead of completing silently', async () => {
+    const photoUrl = 'https://storage.example/auth-user-id/icon.jpg?v=1';
+
+    mocks.rpc.mockResolvedValue({
+      data: {
+        code: 'profile_already_created',
+        error: 'Profile already exists.',
+        status: 'error',
+      },
+      error: null,
+    });
+    mocks.getUser.mockResolvedValue({
+      data: { user: { id: 'auth-user-id' } },
+      error: null,
+    });
+    mocks.from.mockReturnValue({ update: mocks.update });
+    mocks.update.mockReturnValue({ eq: mocks.eq });
+    mocks.eq.mockReturnValue({ select: mocks.select });
+    mocks.select.mockReturnValue({ single: mocks.single });
+    mocks.single.mockResolvedValue({
+      data: null,
+      error: new Error('update failed'),
+    });
+
+    await completeInitialProfileSetup({
+      displayName: 'Sleepy User',
+      iconId: photoUrl,
+      publicUserId: 'sleepy-user',
+    }).then(
+      () => {
+        throw new Error('expected completeInitialProfileSetup to reject');
+      },
+      (error: unknown) => {
+        expectUserServiceError(error, 'unexpected_error');
+      },
+    );
+  });
+
+  it('does not attempt a photo update when the already-created Profile has a preset icon', async () => {
+    mocks.rpc.mockResolvedValue({
+      data: {
+        code: 'profile_already_created',
+        error: 'Profile already exists.',
+        status: 'error',
+      },
+      error: null,
+    });
+
+    await completeInitialProfileSetup({
+      displayName: 'Sleepy User',
+      iconId: 'boy',
+      publicUserId: 'sleepy-user',
+    });
+
+    expect(mocks.update).not.toHaveBeenCalled();
+  });
+
+  it('propagates not_authenticated without attempting a photo update', async () => {
+    mocks.rpc.mockResolvedValue({
+      data: {
+        code: 'not_authenticated',
+        error: 'Authentication is required.',
+        status: 'error',
+      },
+      error: null,
+    });
+
+    await completeInitialProfileSetup({
+      displayName: 'Sleepy User',
+      iconId: 'https://storage.example/auth-user-id/icon.jpg?v=1',
+      publicUserId: 'sleepy-user',
+    }).then(
+      () => {
+        throw new Error('expected completeInitialProfileSetup to reject');
+      },
+      (error: unknown) => {
+        expectUserServiceError(error, 'not_authenticated');
+      },
+    );
+    expect(mocks.update).not.toHaveBeenCalled();
   });
 });
 

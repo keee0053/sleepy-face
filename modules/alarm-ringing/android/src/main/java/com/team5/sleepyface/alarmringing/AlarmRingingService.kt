@@ -34,7 +34,8 @@ class AlarmRingingService : Service() {
     when (intent?.action) {
       ACTION_FIRE_TEST_ALARM, ACTION_FIRE_SAVED_ALARM -> {
         val alarmId = intent.getStringExtra(EXTRA_ALARM_ID) ?: return START_NOT_STICKY
-        startRinging(alarmId)
+        val soundId = intent.getStringExtra(EXTRA_SOUND_ID)
+        startRinging(alarmId, soundId)
       }
       ACTION_STOP_RINGING -> stopRinging()
     }
@@ -49,7 +50,7 @@ class AlarmRingingService : Service() {
     super.onDestroy()
   }
 
-  private fun startRinging(alarmId: String) {
+  private fun startRinging(alarmId: String, soundId: String?) {
     val startedAt = Instant.now().toString()
     AlarmRingingState.start(alarmId, startedAt)
     createNotificationChannel()
@@ -59,7 +60,7 @@ class AlarmRingingService : Service() {
       buildNotification(alarmId, startedAt),
     )
 
-    playDefaultAlarmTone()
+    playAlarmTone(soundId)
     handler.removeCallbacks(safetyStop)
     handler.postDelayed(safetyStop, SAFETY_TIMEOUT_MS)
   }
@@ -72,22 +73,20 @@ class AlarmRingingService : Service() {
     stopSelf()
   }
 
-  private fun playDefaultAlarmTone() {
+  // A Saved Alarm's chosen sound (see src/constants/alarm-sounds.ts). "default"/null/an
+  // unknown id all fall back to the device's own alarm tone, same as before this option
+  // existed.
+  private fun resourceIdForSound(soundId: String?): Int? = when (soundId) {
+    "classic_beep" -> R.raw.classic_beep
+    "digital_pulse" -> R.raw.digital_pulse
+    "gentle_chime" -> R.raw.gentle_chime
+    else -> null
+  }
+
+  private fun playAlarmTone(soundId: String?) {
     stopDefaultAlarmTone()
 
-    // On some OEM builds (observed on Samsung One UI), RingtoneManager.getDefaultUri()
-    // internally triggers a lazy write to Settings.System the first time it resolves the
-    // default alarm/notification tone, which throws SecurityException without
-    // WRITE_SETTINGS (an app should never need to hold that permission just to read a
-    // default tone). Guard every step so a tone-resolution/playback failure silences the
-    // alarm sound instead of crashing the whole ringing service.
-    val alarmToneUri = resolveAlarmToneUri()
-
-    if (alarmToneUri == null) {
-      Log.e(LOG_TAG, "No alarm tone URI could be resolved; ringing silently.")
-      return
-    }
-
+    val customSoundResId = resourceIdForSound(soundId)
     val player = MediaPlayer()
 
     try {
@@ -97,13 +96,36 @@ class AlarmRingingService : Service() {
           .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
           .build(),
       )
-      player.setDataSource(applicationContext, alarmToneUri)
+
+      if (customSoundResId != null) {
+        val descriptor = resources.openRawResourceFd(customSoundResId)
+        descriptor.use {
+          player.setDataSource(it.fileDescriptor, it.startOffset, it.length)
+        }
+      } else {
+        // On some OEM builds (observed on Samsung One UI), RingtoneManager.getDefaultUri()
+        // internally triggers a lazy write to Settings.System the first time it resolves
+        // the default alarm/notification tone, which throws SecurityException without
+        // WRITE_SETTINGS (an app should never need to hold that permission just to read a
+        // default tone). Guard every step so a tone-resolution/playback failure silences
+        // the alarm sound instead of crashing the whole ringing service.
+        val alarmToneUri = resolveAlarmToneUri()
+
+        if (alarmToneUri == null) {
+          Log.e(LOG_TAG, "No alarm tone URI could be resolved; ringing silently.")
+          player.release()
+          return
+        }
+
+        player.setDataSource(applicationContext, alarmToneUri)
+      }
+
       player.isLooping = true
       player.prepare()
       player.start()
       mediaPlayer = player
     } catch (error: Exception) {
-      Log.e(LOG_TAG, "Failed to play alarm tone $alarmToneUri; ringing silently.", error)
+      Log.e(LOG_TAG, "Failed to play alarm tone (soundId=$soundId); ringing silently.", error)
       player.release()
       mediaPlayer = null
     }

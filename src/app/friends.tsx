@@ -2,7 +2,6 @@ import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import {
-  ActivityIndicator,
   FlatList,
   Pressable,
   StyleSheet,
@@ -13,6 +12,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { BottomNav } from '@/components/bottom-nav';
+import { FriendListLoadingSkeleton } from '@/components/loading-skeletons';
 import { PROFILE_ICON_SOURCES } from '@/constants/profile-icons';
 import {
   FriendServiceError,
@@ -130,10 +130,7 @@ export default function FriendsScreen() {
           {errorMessage && <Text style={styles.errorText}>{errorMessage}</Text>}
 
           {isLoading ? (
-            <View style={styles.loadingBox}>
-              <ActivityIndicator color="#171717" />
-              <Text style={styles.loadingText}>友達を読み込み中...</Text>
-            </View>
+            <FriendListLoadingSkeleton />
           ) : (
             <FlatList
               contentContainerStyle={styles.friendList}
@@ -208,15 +205,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 21,
     marginBottom: 10,
-  },
-  loadingBox: {
-    alignItems: 'center',
-    gap: 10,
-    paddingVertical: 44,
-  },
-  loadingText: {
-    color: '#737373',
-    fontSize: 14,
   },
   friendList: {
     gap: 10,

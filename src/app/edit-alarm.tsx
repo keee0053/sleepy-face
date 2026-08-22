@@ -13,6 +13,14 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { LoadingButtonContent, LoadingState } from '@/components/loading';
+import {
+  ALARM_SOUND_IDS,
+  ALARM_SOUND_LABELS,
+  DEFAULT_ALARM_SOUND_ID,
+  type AlarmSoundId,
+} from '@/constants/alarm-sounds';
+import { previewAlarmSound } from '@/services/alarm-sound-preview';
 import {
   AlarmServiceError,
   deleteSavedAlarm,
@@ -245,6 +253,7 @@ export default function EditAlarmScreen() {
   const [selectedWeekdays, setSelectedWeekdays] = useState<Weekday[]>([
     1, 2, 3, 4, 5,
   ]);
+  const [soundId, setSoundId] = useState<AlarmSoundId>(DEFAULT_ALARM_SOUND_ID);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -278,6 +287,7 @@ export default function EditAlarmScreen() {
         setHour(targetAlarm.hour);
         setMinute(targetAlarm.minute);
         setSelectedWeekdays(targetAlarm.weekdays);
+        setSoundId(targetAlarm.soundId);
         setErrorMessage(null);
       } catch (error) {
         if (isMounted) {
@@ -324,6 +334,7 @@ export default function EditAlarmScreen() {
       await updateSavedAlarm(alarmId, {
         hour,
         minute,
+        soundId,
         weekdays: selectedWeekdays,
       });
       router.replace('/alarms');
@@ -332,7 +343,7 @@ export default function EditAlarmScreen() {
     } finally {
       setIsSaving(false);
     }
-  }, [alarmId, hour, minute, selectedWeekdays]);
+  }, [alarmId, hour, minute, selectedWeekdays, soundId]);
 
   const handleDelete = useCallback(async () => {
     if (!alarmId) {
@@ -377,9 +388,12 @@ export default function EditAlarmScreen() {
         </View>
 
         {isLoading ? (
-          <View style={styles.loadingArea}>
-            <Text style={styles.loadingText}>読み込み中...</Text>
-          </View>
+          <LoadingState
+            message="アラームを読み込んでいます..."
+            size="large"
+            style={styles.loadingArea}
+            variant="screen"
+          />
         ) : (
           <>
             <View style={styles.timeSection}>
@@ -428,6 +442,42 @@ export default function EditAlarmScreen() {
                 </View>
               </View>
 
+              <View style={styles.soundSection}>
+                <Text style={styles.weekdayTitle}>アラーム音</Text>
+                <View style={styles.soundList}>
+                  {ALARM_SOUND_IDS.map((id) => {
+                    const isSelected = id === soundId;
+
+                    return (
+                      <Pressable
+                        accessibilityRole="radio"
+                        accessibilityState={{ selected: isSelected }}
+                        disabled={isBusy}
+                        key={id}
+                        onPress={() => {
+                          setSoundId(id);
+                          previewAlarmSound(id);
+                        }}
+                        style={[
+                          styles.soundOption,
+                          isSelected && styles.soundOptionSelected,
+                          isBusy && styles.disabled,
+                        ]}
+                      >
+                        <Text
+                          style={[
+                            styles.soundOptionText,
+                            isSelected && styles.soundOptionTextSelected,
+                          ]}
+                        >
+                          {ALARM_SOUND_LABELS[id]}
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+              </View>
+
               <Pressable
                 accessibilityRole="button"
                 disabled={isBusy}
@@ -437,9 +487,12 @@ export default function EditAlarmScreen() {
                   (pressed || isDeleting) && styles.deleteButtonPressed,
                 ]}
               >
-                <Text style={styles.deleteButtonText}>
-                  {isDeleting ? '削除中...' : 'アラームを削除'}
-                </Text>
+                <LoadingButtonContent
+                  label="アラームを削除"
+                  loading={isDeleting}
+                  loadingLabel="削除中..."
+                  textStyle={styles.deleteButtonText}
+                />
               </Pressable>
             </ScrollView>
           </>
@@ -459,9 +512,13 @@ export default function EditAlarmScreen() {
               (pressed || isSaving || isBusy) && styles.saveButtonPressed,
             ]}
           >
-            <Text style={styles.saveButtonText}>
-              {isSaving ? '保存中...' : '保存'}
-            </Text>
+            <LoadingButtonContent
+              label="保存"
+              loading={isSaving}
+              loadingLabel="保存中..."
+              textStyle={styles.saveButtonText}
+              tone="light"
+            />
           </Pressable>
         </View>
       </View>
@@ -502,14 +559,7 @@ const styles = StyleSheet.create({
     fontWeight: '800',
   },
   loadingArea: {
-    alignItems: 'center',
     flex: 1,
-    justifyContent: 'center',
-  },
-  loadingText: {
-    color: '#737373',
-    fontSize: 15,
-    fontWeight: '700',
   },
   scroll: {
     flex: 1,
@@ -608,6 +658,35 @@ const styles = StyleSheet.create({
     fontWeight: '800',
   },
   weekdayTextSelected: {
+    color: '#ffffff',
+  },
+  soundSection: {
+    paddingHorizontal: 40,
+    paddingTop: 32,
+  },
+  soundList: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    justifyContent: 'center',
+  },
+  soundOption: {
+    borderColor: '#e5e5e5',
+    borderRadius: 20,
+    borderWidth: 1,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+  },
+  soundOptionSelected: {
+    backgroundColor: '#171717',
+    borderColor: '#171717',
+  },
+  soundOptionText: {
+    color: '#a3a3a3',
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  soundOptionTextSelected: {
     color: '#ffffff',
   },
   deleteButton: {

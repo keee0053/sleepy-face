@@ -56,6 +56,7 @@ function storedAlarm(overrides: Partial<SavedAlarm> = {}): SavedAlarm {
     isEnabled: true,
     lastFiredLocalDay: null,
     minute: 30,
+    soundId: 'default',
     updatedAt: '2026-08-17T00:00:00.000Z',
     weekdays: [1, 3],
     ...overrides,
@@ -92,6 +93,7 @@ describe('Saved Alarm service', () => {
         hour: 7,
         minute: 30,
         weekdays: [5, 1, 3],
+        soundId: 'default',
       }),
     ).resolves.toEqual({
       createdAt: '2026-08-17T00:00:00.000Z',
@@ -100,6 +102,7 @@ describe('Saved Alarm service', () => {
       isEnabled: true,
       lastFiredLocalDay: null,
       minute: 30,
+      soundId: 'default',
       updatedAt: '2026-08-17T00:00:00.000Z',
       weekdays: [1, 3, 5],
     });
@@ -113,6 +116,7 @@ describe('Saved Alarm service', () => {
           isEnabled: true,
           lastFiredLocalDay: null,
           minute: 30,
+          soundId: 'default',
           updatedAt: '2026-08-17T00:00:00.000Z',
           weekdays: [1, 3, 5],
         },
@@ -129,6 +133,7 @@ describe('Saved Alarm service', () => {
         hour: 8,
         minute: 45,
         weekdays: [3],
+        soundId: 'default',
       }),
     ).resolves.toEqual({
       createdAt: '2026-08-17T00:00:00.000Z',
@@ -137,6 +142,7 @@ describe('Saved Alarm service', () => {
       isEnabled: true,
       lastFiredLocalDay: null,
       minute: 45,
+      soundId: 'default',
       updatedAt: '2026-08-18T00:00:00.000Z',
       weekdays: [3],
     });
@@ -206,6 +212,7 @@ describe('Saved Alarm service', () => {
         hour: 24,
         minute: 30,
         weekdays: [1],
+        soundId: 'default',
       }),
     ).rejects.toMatchObject({ code: 'invalid_alarm_input' });
 
@@ -214,6 +221,7 @@ describe('Saved Alarm service', () => {
         hour: 7,
         minute: 60,
         weekdays: [1],
+        soundId: 'default',
       }),
     ).rejects.toMatchObject({ code: 'invalid_alarm_input' });
 
@@ -222,6 +230,7 @@ describe('Saved Alarm service', () => {
         hour: 7,
         minute: 30,
         weekdays: [],
+        soundId: 'default',
       }),
     ).rejects.toMatchObject({ code: 'invalid_alarm_input' });
 
@@ -230,6 +239,7 @@ describe('Saved Alarm service', () => {
         hour: 7,
         minute: 30,
         weekdays: [1, 1],
+        soundId: 'default',
       }),
     ).rejects.toMatchObject({ code: 'invalid_alarm_input' });
 
@@ -238,6 +248,7 @@ describe('Saved Alarm service', () => {
         hour: 7,
         minute: 30,
         weekdays: [7],
+        soundId: 'default',
       }),
     ).rejects.toMatchObject({ code: 'invalid_alarm_input' });
   });
@@ -250,6 +261,7 @@ describe('Saved Alarm service', () => {
         hour: 8,
         minute: 0,
         weekdays: [3, 5],
+        soundId: 'default',
       }),
     ).rejects.toSatisfy((error: unknown) => {
       expectAlarmServiceError(error, 'weekday_already_used');
@@ -264,6 +276,7 @@ describe('Saved Alarm service', () => {
         hour: 8,
         minute: 0,
         weekdays: [1, 3],
+        soundId: 'default',
       }),
     ).resolves.toMatchObject({
       hour: 8,
@@ -277,6 +290,7 @@ describe('Saved Alarm service', () => {
         hour: 7,
         minute: 30,
         weekdays: [1],
+        soundId: 'default',
       }),
     ).rejects.toMatchObject({ code: 'saved_alarm_not_found' });
 
@@ -316,6 +330,7 @@ describe('Saved Alarm service', () => {
         hour: 7,
         minute: 30,
         weekdays: [1],
+        soundId: 'default',
       }),
     ).rejects.toMatchObject({
       code: 'storage_write_failed',
@@ -404,6 +419,7 @@ describe('Saved Alarm service', () => {
     expect(alarmMechanicsMocks.scheduleAlarmOccurrence).toHaveBeenCalledWith(
       'alarm-1',
       expect.any(Number),
+      'default',
     );
   });
 
@@ -439,12 +455,14 @@ describe('Saved Alarm service', () => {
       hour: 7,
       minute: 30,
       weekdays: [1, 3],
+      soundId: 'default',
     });
 
     const expectedNext = getNextAlarmOccurrence(created);
     expect(alarmMechanicsMocks.scheduleAlarmOccurrence).toHaveBeenCalledWith(
       '00000000-0000-4000-8000-000000000001',
       expectedNext.getTime(),
+      'default',
     );
     expect(alarmMechanicsMocks.cancelAlarmOccurrence).not.toHaveBeenCalled();
   });
@@ -455,6 +473,7 @@ describe('Saved Alarm service', () => {
     const updated = await updateSavedAlarm('alarm-1', {
       hour: 8,
       minute: 45,
+      soundId: 'default',
       weekdays: [3],
     });
 
@@ -462,6 +481,7 @@ describe('Saved Alarm service', () => {
     expect(alarmMechanicsMocks.scheduleAlarmOccurrence).toHaveBeenCalledWith(
       'alarm-1',
       expectedNext.getTime(),
+      'default',
     );
   });
 
@@ -484,6 +504,7 @@ describe('Saved Alarm service', () => {
     expect(alarmMechanicsMocks.scheduleAlarmOccurrence).toHaveBeenCalledWith(
       'alarm-1',
       expectedNext.getTime(),
+      'default',
     );
   });
 
@@ -506,7 +527,12 @@ describe('Saved Alarm service', () => {
       '00000000-0000-4000-8000-000000000002',
     );
 
-    await createSavedAlarm({ hour: 6, minute: 0, weekdays: [2] });
+    await createSavedAlarm({
+      hour: 6,
+      minute: 0,
+      soundId: 'default',
+      weekdays: [2],
+    });
 
     expect(alarmMechanicsMocks.scheduleAlarmOccurrence).toHaveBeenCalledTimes(
       1,
@@ -514,6 +540,7 @@ describe('Saved Alarm service', () => {
     expect(alarmMechanicsMocks.scheduleAlarmOccurrence).toHaveBeenCalledWith(
       '00000000-0000-4000-8000-000000000002',
       expect.any(Number),
+      'default',
     );
     expect(alarmMechanicsMocks.cancelAlarmOccurrence).not.toHaveBeenCalled();
   });
@@ -529,7 +556,12 @@ describe('Saved Alarm service', () => {
     );
 
     await expect(
-      createSavedAlarm({ hour: 7, minute: 30, weekdays: [1] }),
+      createSavedAlarm({
+        hour: 7,
+        minute: 30,
+        soundId: 'default',
+        weekdays: [1],
+      }),
     ).resolves.toMatchObject({
       hour: 7,
       id: '00000000-0000-4000-8000-000000000001',
@@ -547,6 +579,7 @@ describe('Saved Alarm service', () => {
           isEnabled: true,
           lastFiredLocalDay: null,
           minute: 30,
+          soundId: 'default',
           updatedAt: '2026-08-17T00:00:00.000Z',
           weekdays: [1],
         },
@@ -563,7 +596,12 @@ describe('Saved Alarm service', () => {
     );
 
     await expect(
-      updateSavedAlarm('alarm-1', { hour: 8, minute: 45, weekdays: [3] }),
+      updateSavedAlarm('alarm-1', {
+        hour: 8,
+        minute: 45,
+        soundId: 'default',
+        weekdays: [3],
+      }),
     ).resolves.toMatchObject({
       hour: 8,
       minute: 45,
@@ -619,12 +657,54 @@ describe('Saved Alarm service', () => {
     expect(alarmMechanicsMocks.scheduleAlarmOccurrence).toHaveBeenCalledWith(
       'enabled-1',
       expect.any(Number),
+      'default',
     );
     expect(alarmMechanicsMocks.scheduleAlarmOccurrence).toHaveBeenCalledWith(
       'enabled-2',
       expect.any(Number),
+      'default',
     );
     expect(alarmMechanicsMocks.cancelAlarmOccurrence).not.toHaveBeenCalled();
+  });
+
+  it('BUG: deleting and recreating a fired Saved Alarm no longer bypasses the one-per-day skip', async () => {
+    const store = new Map<string, string>([
+      [
+        'sleepy-face:saved-alarms',
+        JSON.stringify([storedAlarm({ lastFiredLocalDay: null })]),
+      ],
+    ]);
+    mocks.getItem.mockImplementation(
+      async (key: string) => store.get(key) ?? null,
+    );
+    mocks.setItem.mockImplementation(async (key: string, value: string) => {
+      store.set(key, value);
+    });
+    mocks.removeItem.mockImplementation(async (key: string) => {
+      store.delete(key);
+    });
+
+    vi.setSystemTime(new Date('2026-08-17T07:30:00.000Z'));
+    const now = new Date('2026-08-17T07:30:00.000Z');
+
+    // The alarm rings and the user starts (and presumably finishes) today's attempt.
+    const fired = await recordSavedAlarmFired('alarm-1', now);
+    expect(alarmWillSkipToday(fired!, now)).toBe(true);
+
+    // User deletes the alarm and recreates an identical one later the same day.
+    await deleteSavedAlarm('alarm-1');
+    vi.spyOn(globalThis.crypto, 'randomUUID').mockReturnValue(
+      '00000000-0000-4000-8000-000000000099',
+    );
+    const recreated = await createSavedAlarm({
+      hour: fired!.hour,
+      minute: fired!.minute,
+      weekdays: fired!.weekdays,
+      soundId: 'default',
+    });
+
+    // The one-Daily-Alarm-Attempt-per-day limit must survive delete+recreate.
+    expect(alarmWillSkipToday(recreated, now)).toBe(true);
   });
 
   it('resyncs remaining Saved Alarms even when one fails to schedule', async () => {
@@ -651,10 +731,12 @@ describe('Saved Alarm service', () => {
     expect(alarmMechanicsMocks.scheduleAlarmOccurrence).toHaveBeenCalledWith(
       'broken',
       expect.any(Number),
+      'default',
     );
     expect(alarmMechanicsMocks.scheduleAlarmOccurrence).toHaveBeenCalledWith(
       'ok',
       expect.any(Number),
+      'default',
     );
   });
 });

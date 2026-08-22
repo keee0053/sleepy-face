@@ -1,6 +1,6 @@
 import { supabase } from '@/lib/supabase';
 import { listFriendRelations, resolveFriendProfileId } from '@/services/friend';
-import { toProfileIconId, type ProfileIconId } from '@/services/user';
+import { toProfileIconValue } from '@/services/user';
 
 export type FriendsFeedItem = {
   photoId: string;
@@ -8,7 +8,11 @@ export type FriendsFeedItem = {
   createdAt: string;
   profileId: string;
   displayName: string;
-  iconId: ProfileIconId;
+  // Either a preset icon identifier or a custom photo URL — see isCustomProfilePhotoUrl.
+  iconId: string;
+  reactionCount: number;
+  viewerHasReacted: boolean;
+  commentCount: number;
 };
 
 export type HomeFeedServiceErrorCode = 'not_authenticated' | 'unexpected_error';
@@ -24,6 +28,15 @@ type ProfileRow = {
   id: string;
   display_name: string;
   icon_url: string | null;
+};
+
+type ReactionRow = {
+  photo_id: string;
+  profile_id: string;
+};
+
+type CommentCountRow = {
+  photo_id: string;
 };
 
 export class HomeFeedServiceError extends Error {
@@ -104,16 +117,62 @@ export async function listFriendsFeed(): Promise<FriendsFeedItem[]> {
     ]),
   );
 
+  const photoIds = photos.map((photo) => photo.id);
+
+  const { data: reactionRows, error: reactionError } = await supabase
+    .from('photo_reactions')
+    .select('photo_id, profile_id')
+    .in('photo_id', photoIds);
+
+  if (reactionError) {
+    throw mapHomeFeedError(reactionError);
+  }
+
+  const reactionCountByPhotoId = new Map<string, number>();
+  const viewerReactedPhotoIds = new Set<string>();
+
+  for (const reaction of (reactionRows ?? []) as ReactionRow[]) {
+    reactionCountByPhotoId.set(
+      reaction.photo_id,
+      (reactionCountByPhotoId.get(reaction.photo_id) ?? 0) + 1,
+    );
+
+    if (reaction.profile_id === profileId) {
+      viewerReactedPhotoIds.add(reaction.photo_id);
+    }
+  }
+
+  const { data: commentRows, error: commentError } = await supabase
+    .from('comments')
+    .select('photo_id')
+    .in('photo_id', photoIds);
+
+  if (commentError) {
+    throw mapHomeFeedError(commentError);
+  }
+
+  const commentCountByPhotoId = new Map<string, number>();
+
+  for (const comment of (commentRows ?? []) as CommentCountRow[]) {
+    commentCountByPhotoId.set(
+      comment.photo_id,
+      (commentCountByPhotoId.get(comment.photo_id) ?? 0) + 1,
+    );
+  }
+
   return photos.map((photo) => {
     const profile = profileById.get(photo.profile_id);
 
     return {
+      commentCount: commentCountByPhotoId.get(photo.id) ?? 0,
       createdAt: photo.created_at,
       displayName: profile?.display_name ?? '不明なユーザー',
-      iconId: toProfileIconId(profile?.icon_url),
+      iconId: toProfileIconValue(profile?.icon_url),
       imageUrl: photo.image_url,
       photoId: photo.id,
       profileId: photo.profile_id,
+      reactionCount: reactionCountByPhotoId.get(photo.id) ?? 0,
+      viewerHasReacted: viewerReactedPhotoIds.has(photo.id),
     };
   });
 }

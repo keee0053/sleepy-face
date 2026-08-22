@@ -161,6 +161,29 @@ Rules:
 - Challenge Success restores or allows Friends Feed Access for the current local day.
 - Friends Feed Access does not block Alarm, Friends, or Profile.
 
+### Reactions
+
+A viewer can react to a friend's Failure Card in the feed with a single 😂 reaction.
+
+Rules:
+
+- 😂 is the only reaction; this is not a multi-emoji picker.
+- Reacting is a toggle: tapping again removes the viewer's own reaction.
+- The reaction count is visible to anyone who can see the photo.
+
+### Comments
+
+A viewer can comment on a friend's Failure Card, on the photo's detail screen.
+
+Rules:
+
+- Tapping the photo, or the comment-bubble button, in the Home feed opens the photo's detail screen.
+- The detail screen shows the photo, the 😂 reaction control, the comment count, and the comment thread oldest-first.
+- A viewer can add a comment from the detail screen; the viewer's own comments are labeled "自分" instead of their Display Name.
+- Comments are visible to anyone who can see the photo.
+- Comment on a comment (threaded replies) is optional, not required for the MVP.
+- There is no edit or delete for a comment yet.
+
 ## 7. Profile
 
 Profile is the user's minimal personal area.
@@ -203,8 +226,7 @@ The following are not part of the MVP:
 - Contact import
 - Friend recommendations
 - QR-code friend adding
-- Comments
-- Reactions
+- Threaded comment replies
 - Rankings
 - Public all-user feed
 - Reports

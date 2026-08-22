@@ -14,7 +14,8 @@
         "foregroundImage": "./assets/images/android-adaptive-icon-foreground.png"
       },
       "predictiveBackGestureEnabled": false,
-      "permissions": ["android.permission.CAMERA"]
+      "permissions": ["android.permission.CAMERA"],
+      "googleServicesFile": "./google-services.json"
     },
     "ios": {
       "bundleIdentifier": "com.team5.sleepyface",
@@ -29,6 +30,15 @@
     },
     "plugins": [
       "expo-router",
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#FFFFFF",
+          "image": "./assets/images/app-icon.png",
+          "imageWidth": 128,
+          "resizeMode": "contain"
+        }
+      ],
       "./plugins/with-android-alarm-mechanics",
       [
         "expo-camera",
@@ -36,7 +46,15 @@
           "cameraPermission": "眠そうな顔が起床確認用の写真を撮影するためにカメラを使用します。",
           "recordAudioAndroid": false
         }
-      ]
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "プロフィールアイコンに設定する写真を選ぶために写真ライブラリを使用します。"
+        }
+      ],
+      "expo-notifications",
+      "expo-audio"
     ],
     "experiments": {
       "typedRoutes": true,

@@ -1,12 +1,22 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import {
+  isAlarmSoundId,
+  toAlarmSoundId,
+  type AlarmSoundId,
+} from '@/constants/alarm-sounds';
+
+import {
   cancelAlarmOccurrence,
   scheduleAlarmOccurrence,
 } from './android-alarm-mechanics';
 import { getLocalDay } from './wake-challenge-attempt';
 
 const SAVED_ALARMS_STORAGE_KEY = 'sleepy-face:saved-alarms';
+// Tracks the local day of the user's last Daily Alarm Attempt independent of any single
+// alarm's id, so deleting and recreating the alarm that fired can't re-open today's attempt.
+const LAST_ALARM_ATTEMPT_LOCAL_DAY_STORAGE_KEY =
+  'sleepy-face:last-alarm-attempt-local-day';
 
 export type Weekday = 0 | 1 | 2 | 3 | 4 | 5 | 6;
 
@@ -16,6 +26,7 @@ export type SavedAlarm = {
   minute: number;
   weekdays: Weekday[];
   isEnabled: boolean;
+  soundId: AlarmSoundId;
   lastFiredLocalDay: string | null;
   createdAt: string;
   updatedAt: string;
@@ -25,6 +36,7 @@ export type SaveAlarmInput = {
   hour: number;
   minute: number;
   weekdays: number[];
+  soundId: string;
 };
 
 export type AlarmServiceErrorCode =
@@ -48,6 +60,7 @@ type StoredAlarmRow = {
   minute: unknown;
   weekdays: unknown;
   isEnabled?: unknown;
+  soundId?: unknown;
   lastFiredLocalDay?: unknown;
   createdAt: unknown;
   updatedAt: unknown;
@@ -112,6 +125,7 @@ function validateAlarmInput(input: SaveAlarmInput): {
   hour: number;
   minute: number;
   weekdays: Weekday[];
+  soundId: AlarmSoundId;
 } {
   if (!isValidTimePart(input.hour, 0, 23)) {
     throw new AlarmServiceError(
@@ -134,9 +148,17 @@ function validateAlarmInput(input: SaveAlarmInput): {
     );
   }
 
+  if (!isAlarmSoundId(input.soundId)) {
+    throw new AlarmServiceError(
+      'invalid_alarm_input',
+      'Saved Alarm sound must be a known Alarm Sound identifier.',
+    );
+  }
+
   return {
     hour: input.hour,
     minute: input.minute,
+    soundId: input.soundId,
     weekdays: normalizeWeekdays(input.weekdays, 'invalid_alarm_input'),
   };
 }
@@ -181,6 +203,11 @@ function mapStoredAlarm(value: unknown): SavedAlarm {
     lastFiredLocalDay:
       typeof row.lastFiredLocalDay === 'string' ? row.lastFiredLocalDay : null,
     minute: row.minute as number,
+    // Older local alarms saved before this option existed are treated as the default
+    // sound, same fallback as an unrecognized id.
+    soundId: toAlarmSoundId(
+      typeof row.soundId === 'string' ? row.soundId : null,
+    ),
     updatedAt: row.updatedAt,
     weekdays: normalizeWeekdays(row.weekdays, 'storage_parse_failed'),
   };
@@ -238,6 +265,33 @@ async function writeSavedAlarms(savedAlarms: SavedAlarm[]): Promise<void> {
     throw new AlarmServiceError(
       'storage_write_failed',
       'Could not write Saved Alarms to local storage.',
+      error,
+    );
+  }
+}
+
+async function readLastAlarmAttemptLocalDay(): Promise<string | null> {
+  try {
+    return await AsyncStorage.getItem(LAST_ALARM_ATTEMPT_LOCAL_DAY_STORAGE_KEY);
+  } catch (error) {
+    throw new AlarmServiceError(
+      'storage_read_failed',
+      'Could not read the last alarm attempt local day from local storage.',
+      error,
+    );
+  }
+}
+
+async function writeLastAlarmAttemptLocalDay(localDay: string): Promise<void> {
+  try {
+    await AsyncStorage.setItem(
+      LAST_ALARM_ATTEMPT_LOCAL_DAY_STORAGE_KEY,
+      localDay,
+    );
+  } catch (error) {
+    throw new AlarmServiceError(
+      'storage_write_failed',
+      'Could not write the last alarm attempt local day to local storage.',
       error,
     );
   }
@@ -332,7 +386,11 @@ async function syncScheduledAlarm(alarm: SavedAlarm): Promise<void> {
     }
 
     const nextOccurrence = getNextAlarmOccurrence(alarm);
-    await scheduleAlarmOccurrence(alarm.id, nextOccurrence.getTime());
+    await scheduleAlarmOccurrence(
+      alarm.id,
+      nextOccurrence.getTime(),
+      alarm.soundId,
+    );
   } catch {
     // Local alarm settings should stay editable even when a development build
     // cannot reach the native scheduler yet. The next app launch calls
@@ -377,14 +435,20 @@ export async function createSavedAlarm(
 
   assertNoWeekdayConflicts(savedAlarms, validatedInput.weekdays);
 
-  const now = new Date().toISOString();
+  const nowDate = new Date();
+  const now = nowDate.toISOString();
+  const lastAlarmAttemptLocalDay = await readLastAlarmAttemptLocalDay();
   const savedAlarm: SavedAlarm = {
     createdAt: now,
     hour: validatedInput.hour,
     id: generateSavedAlarmId(),
     isEnabled: true,
-    lastFiredLocalDay: null,
+    lastFiredLocalDay:
+      lastAlarmAttemptLocalDay === getLocalDay(nowDate)
+        ? lastAlarmAttemptLocalDay
+        : null,
     minute: validatedInput.minute,
+    soundId: validatedInput.soundId,
     updatedAt: now,
     weekdays: validatedInput.weekdays,
   };
@@ -417,6 +481,7 @@ export async function updateSavedAlarm(
     ...targetAlarm,
     hour: validatedInput.hour,
     minute: validatedInput.minute,
+    soundId: validatedInput.soundId,
     updatedAt: new Date().toISOString(),
     weekdays: validatedInput.weekdays,
   };
@@ -476,10 +541,11 @@ export async function recordSavedAlarmFired(
     updatedAt: now.toISOString(),
   };
 
+  await writeLastAlarmAttemptLocalDay(getLocalDay(now));
+  await syncScheduledAlarm(updatedAlarm);
   await writeSavedAlarms(
     savedAlarms.map((alarm) => (alarm.id === alarmId ? updatedAlarm : alarm)),
   );
-  await syncScheduledAlarm(updatedAlarm);
 
   return updatedAlarm;
 }

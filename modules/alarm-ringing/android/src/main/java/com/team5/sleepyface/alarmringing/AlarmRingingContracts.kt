@@ -10,6 +10,7 @@ internal const val ACTION_STOP_RINGING =
 internal const val EXTRA_ALARM_ID = "alarmId"
 internal const val EXTRA_SCHEDULED_FOR = "scheduledFor"
 internal const val EXTRA_STARTED_AT = "startedAt"
+internal const val EXTRA_SOUND_ID = "soundId"
 
 internal const val TEST_ALARM_REQUEST_CODE = 51017
 internal const val FULL_SCREEN_REQUEST_CODE = 51018

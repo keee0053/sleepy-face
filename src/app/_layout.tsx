@@ -1,4 +1,5 @@
 import { Stack, router, usePathname } from 'expo-router';
+import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
 import { AppRegistry, AppState, InteractionManager } from 'react-native';
 
@@ -13,6 +14,11 @@ import {
 } from '@/services/wake-challenge-attempt';
 
 const SAVED_ALARM_BOOT_RESYNC_TASK_NAME = 'SavedAlarmBootResync';
+
+SplashScreen.setOptions({
+  duration: 300,
+  fade: true,
+});
 
 AppRegistry.registerHeadlessTask(
   SAVED_ALARM_BOOT_RESYNC_TASK_NAME,

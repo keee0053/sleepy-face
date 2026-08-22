@@ -1,4 +1,10 @@
-import type { ProfileIconId } from '@/services/user';
+import type { ImageSourcePropType } from 'react-native';
+
+import {
+  isCustomProfilePhotoUrl,
+  toProfileIconId,
+  type ProfileIconId,
+} from '@/services/user';
 
 export const PROFILE_ICON_SOURCES: Record<ProfileIconId, number> = {
   boy: require('@/assets/images/profile-icons/boy.png'),
@@ -10,6 +16,15 @@ export const PROFILE_ICON_SOURCES: Record<ProfileIconId, number> = {
   'old-man': require('@/assets/images/profile-icons/old-man.png'),
   woman: require('@/assets/images/profile-icons/woman.png'),
 };
+
+// `iconValue` is a Profile's raw icon_url: either a preset identifier or a custom photo URL.
+export function getProfileIconSource(iconValue: string): ImageSourcePropType {
+  if (isCustomProfilePhotoUrl(iconValue)) {
+    return { uri: iconValue };
+  }
+
+  return PROFILE_ICON_SOURCES[toProfileIconId(iconValue)];
+}
 
 export const PROFILE_ICON_LABELS: Record<ProfileIconId, string> = {
   boy: '男の子',

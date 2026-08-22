@@ -15,11 +15,13 @@ class AlarmRingingReceiver : BroadcastReceiver() {
 
     val alarmId = intent.getStringExtra(EXTRA_ALARM_ID) ?: return
     val scheduledFor = intent.getStringExtra(EXTRA_SCHEDULED_FOR) ?: return
+    val soundId = intent.getStringExtra(EXTRA_SOUND_ID)
 
     val serviceIntent = Intent(context, AlarmRingingService::class.java).apply {
       this.action = action
       putExtra(EXTRA_ALARM_ID, alarmId)
       putExtra(EXTRA_SCHEDULED_FOR, scheduledFor)
+      soundId?.let { putExtra(EXTRA_SOUND_ID, it) }
     }
 
     ContextCompat.startForegroundService(context, serviceIntent)

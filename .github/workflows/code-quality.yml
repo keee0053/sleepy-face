@@ -3,11 +3,11 @@ name: Code quality
 on:
   pull_request:
     branches:
-      - develop/v1
+      - develop/**
       - main
   push:
     branches:
-      - develop/v1
+      - develop/**
       - main
 
 permissions:

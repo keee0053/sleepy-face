@@ -1,7 +1,7 @@
 import { Image } from 'expo-image';
-import { useCallback, useEffect, useState } from 'react';
+import { router } from 'expo-router';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  ActivityIndicator,
   FlatList,
   Pressable,
   ScrollView,
@@ -13,7 +13,9 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { BottomNav } from '@/components/bottom-nav';
-import { PROFILE_ICON_SOURCES } from '@/constants/profile-icons';
+import { CommentBubbleIcon } from '@/components/comment-bubble-icon';
+import { FeedLoadingSkeleton } from '@/components/loading-skeletons';
+import { getProfileIconSource } from '@/constants/profile-icons';
 import { getDevMode, setDevMode } from '@/services/dev-mode';
 import {
   clearFriendsFeedAccessBlock,
@@ -26,6 +28,11 @@ import {
   listFriendsFeed,
   type FriendsFeedItem,
 } from '@/services/home-feed';
+import {
+  addPhotoReaction,
+  removePhotoReaction,
+} from '@/services/photo-reactions';
+import { registerPushToken } from '@/services/push-token';
 
 function getHomeFeedErrorMessage(error: unknown): string {
   if (error instanceof HomeFeedServiceError) {
@@ -67,6 +74,9 @@ export default function HomeScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isDevMode, setIsDevMode] = useState(false);
+  // A pure in-flight guard for handleToggleReaction — never read by JSX/styles, so a
+  // ref avoids an extra re-render on every reaction tap that useState would cause.
+  const pendingReactionPhotoIds = useRef<Set<string>>(new Set());
 
   useEffect(() => {
     let isActive = true;
@@ -80,6 +90,14 @@ export default function HomeScreen() {
     return () => {
       isActive = false;
     };
+  }, []);
+
+  useEffect(() => {
+    // Best-effort: a failed/denied push token registration must never block or error the
+    // Home screen, since the Friends Feed is the fallback delivery path either way.
+    registerPushToken().catch((error: unknown) => {
+      console.warn('[home] push token registration failed', error);
+    });
   }, []);
 
   useEffect(() => {
@@ -124,6 +142,70 @@ export default function HomeScreen() {
     }
   }, []);
 
+  const applyReactionState = useCallback(
+    (photoId: string, hasReacted: boolean) => {
+      setFeed((currentFeed) =>
+        currentFeed.map((item) =>
+          item.photoId === photoId
+            ? {
+                ...item,
+                reactionCount: item.reactionCount + (hasReacted ? 1 : -1),
+                viewerHasReacted: hasReacted,
+              }
+            : item,
+        ),
+      );
+    },
+    [],
+  );
+
+  const handleToggleReaction = useCallback(
+    async (item: FriendsFeedItem) => {
+      // A photo already has a toggle in flight — ignore the tap rather than let a
+      // second add/remove request race the first and leave the feed out of sync.
+      if (pendingReactionPhotoIds.current.has(item.photoId)) {
+        return;
+      }
+
+      const nextHasReacted = !item.viewerHasReacted;
+
+      pendingReactionPhotoIds.current.add(item.photoId);
+
+      // Optimistic: the feed should feel instant, and a failure reverts to the exact
+      // prior state rather than a fresh refetch.
+      applyReactionState(item.photoId, nextHasReacted);
+
+      try {
+        if (nextHasReacted) {
+          await addPhotoReaction(item.photoId);
+        } else {
+          await removePhotoReaction(item.photoId);
+        }
+      } catch {
+        applyReactionState(item.photoId, item.viewerHasReacted);
+      } finally {
+        pendingReactionPhotoIds.current.delete(item.photoId);
+      }
+    },
+    [applyReactionState],
+  );
+
+  const navigateToPhotoDetail = useCallback((item: FriendsFeedItem) => {
+    router.push({
+      params: {
+        createdAt: item.createdAt,
+        displayName: item.displayName,
+        iconId: item.iconId,
+        imageUrl: item.imageUrl,
+        photoId: item.photoId,
+        profileId: item.profileId,
+        reactionCount: String(item.reactionCount),
+        viewerHasReacted: String(item.viewerHasReacted),
+      },
+      pathname: '/photo-detail',
+    });
+  }, []);
+
   const handleExitDevMode = useCallback(async () => {
     await setDevMode(false);
     setIsDevMode(false);
@@ -142,26 +224,70 @@ export default function HomeScreen() {
 
   const renderItem: ListRenderItem<FriendsFeedItem> = ({ item }) => (
     <View>
-      <View style={styles.feedCardHeader}>
-        <View style={styles.avatar}>
-          <Image
-            contentFit="cover"
-            source={PROFILE_ICON_SOURCES[item.iconId]}
-            style={styles.avatarImage}
-          />
+      <Pressable
+        accessibilityRole="button"
+        onPress={() => navigateToPhotoDetail(item)}
+      >
+        <View style={styles.feedCardHeader}>
+          <View style={styles.avatar}>
+            <Image
+              contentFit="cover"
+              source={getProfileIconSource(item.iconId)}
+              style={styles.avatarImage}
+            />
+          </View>
+
+          <View style={styles.feedCardHeaderText}>
+            <Text style={styles.displayName}>{item.displayName}</Text>
+            <Text style={styles.feedDate}>
+              {formatFeedDate(item.createdAt)}
+            </Text>
+          </View>
         </View>
 
-        <View style={styles.feedCardHeaderText}>
-          <Text style={styles.displayName}>{item.displayName}</Text>
-          <Text style={styles.feedDate}>{formatFeedDate(item.createdAt)}</Text>
-        </View>
+        <Image
+          contentFit="cover"
+          source={{ uri: item.imageUrl }}
+          style={styles.feedPhoto}
+        />
+      </Pressable>
+
+      <View style={styles.reactionRow}>
+        <Pressable
+          accessibilityLabel="😂でリアクションする"
+          accessibilityRole="button"
+          accessibilityState={{ selected: item.viewerHasReacted }}
+          onPress={() => handleToggleReaction(item)}
+          style={({ pressed }) => [
+            styles.reactionButton,
+            item.viewerHasReacted && styles.reactionButtonActive,
+            pressed && styles.reactionButtonPressed,
+          ]}
+        >
+          <Text style={styles.reactionEmoji}>😂</Text>
+          <Text
+            style={[
+              styles.reactionCount,
+              item.viewerHasReacted && styles.reactionCountActive,
+            ]}
+          >
+            {item.reactionCount}
+          </Text>
+        </Pressable>
+
+        <Pressable
+          accessibilityLabel="コメントを見る"
+          accessibilityRole="button"
+          onPress={() => navigateToPhotoDetail(item)}
+          style={({ pressed }) => [
+            styles.commentButton,
+            pressed && styles.reactionButtonPressed,
+          ]}
+        >
+          <CommentBubbleIcon color="#737373" size={18} />
+          <Text style={styles.commentCount}>{item.commentCount}</Text>
+        </Pressable>
       </View>
-
-      <Image
-        contentFit="cover"
-        source={{ uri: item.imageUrl }}
-        style={styles.feedPhoto}
-      />
     </View>
   );
 
@@ -193,10 +319,7 @@ export default function HomeScreen() {
           {errorMessage && <Text style={styles.errorText}>{errorMessage}</Text>}
 
           {isLoading ? (
-            <View style={styles.loadingBox}>
-              <ActivityIndicator color="#171717" />
-              <Text style={styles.loadingText}>フィードを読み込み中...</Text>
-            </View>
+            <FeedLoadingSkeleton />
           ) : accessState === 'blocked' ? (
             <ScrollView
               contentContainerStyle={styles.blockedScrollContent}
@@ -281,15 +404,6 @@ const styles = StyleSheet.create({
     lineHeight: 21,
     marginBottom: 10,
   },
-  loadingBox: {
-    alignItems: 'center',
-    gap: 10,
-    paddingVertical: 44,
-  },
-  loadingText: {
-    color: '#737373',
-    fontSize: 14,
-  },
   blockedScrollContent: {
     flexGrow: 1,
     paddingBottom: 116,
@@ -357,6 +471,51 @@ const styles = StyleSheet.create({
     backgroundColor: '#e5e5e5',
     borderRadius: 16,
     width: '100%',
+  },
+  reactionRow: {
+    flexDirection: 'row',
+    paddingTop: 10,
+  },
+  reactionButton: {
+    alignItems: 'center',
+    backgroundColor: '#fafafa',
+    borderColor: '#f1f1f1',
+    borderRadius: 18,
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+  },
+  reactionButtonActive: {
+    backgroundColor: '#fff7ed',
+    borderColor: '#fb923c',
+  },
+  reactionButtonPressed: {
+    opacity: 0.7,
+  },
+  reactionEmoji: {
+    fontSize: 15,
+  },
+  reactionCount: {
+    color: '#737373',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  reactionCountActive: {
+    color: '#c2410c',
+  },
+  commentButton: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 6,
+    paddingHorizontal: 4,
+    paddingVertical: 7,
+  },
+  commentCount: {
+    color: '#737373',
+    fontSize: 13,
+    fontWeight: '700',
   },
   emptyBox: {
     alignItems: 'center',

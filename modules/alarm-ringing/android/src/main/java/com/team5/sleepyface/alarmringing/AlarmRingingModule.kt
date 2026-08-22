@@ -39,16 +39,19 @@ class AlarmRingingModule : Module() {
       requestNotificationPermission(promise)
     }
 
-    AsyncFunction("scheduleTestAlarmAfterSeconds") { seconds: Int ->
-      scheduleTestAlarmAfterSeconds(seconds)
+    AsyncFunction("scheduleTestAlarmAfterSeconds") { seconds: Int, soundId: String? ->
+      scheduleTestAlarmAfterSeconds(seconds, soundId)
     }
 
     AsyncFunction("cancelScheduledTestAlarm") {
       cancelScheduledTestAlarm()
     }
 
-    AsyncFunction("scheduleSavedAlarmOccurrence") { alarmId: String, triggerAtMillis: Long ->
-      scheduleSavedAlarmOccurrence(alarmId, triggerAtMillis)
+    AsyncFunction("scheduleSavedAlarmOccurrence") {
+        alarmId: String,
+        triggerAtMillis: Long,
+        soundId: String? ->
+      scheduleSavedAlarmOccurrence(alarmId, triggerAtMillis, soundId)
     }
 
     AsyncFunction("cancelSavedAlarmOccurrence") { alarmId: String ->
@@ -138,7 +141,10 @@ class AlarmRingingModule : Module() {
     )
   }
 
-  private fun scheduleTestAlarmAfterSeconds(seconds: Int): Map<String, String> {
+  private fun scheduleTestAlarmAfterSeconds(
+    seconds: Int,
+    soundId: String?,
+  ): Map<String, String> {
     if (AlarmRingingState.isRinging()) {
       throw AlreadyRingingException()
     }
@@ -157,7 +163,7 @@ class AlarmRingingModule : Module() {
     val scheduledFor = Instant.ofEpochMilli(triggerAtMillis).toString()
     val alarmId = UUID.randomUUID().toString()
 
-    val pendingIntent = createTestAlarmPendingIntent(alarmId, scheduledFor)
+    val pendingIntent = createTestAlarmPendingIntent(alarmId, scheduledFor, soundId)
     val alarmClockInfo = AlarmManager.AlarmClockInfo(
       triggerAtMillis,
       createShowIntent(alarmId, scheduledFor),
@@ -172,12 +178,13 @@ class AlarmRingingModule : Module() {
   }
 
   private fun cancelScheduledTestAlarm() {
-    alarmManager.cancel(createTestAlarmPendingIntent(null, null))
+    alarmManager.cancel(createTestAlarmPendingIntent(null, null, null))
   }
 
   private fun scheduleSavedAlarmOccurrence(
     alarmId: String,
     triggerAtMillis: Long,
+    soundId: String?,
   ): Map<String, String> {
     // Cancel any previously scheduled occurrence for this alarm ID first, before the
     // permission checks below. This way a failed reschedule (e.g. permission revoked)
@@ -193,7 +200,7 @@ class AlarmRingingModule : Module() {
     }
 
     val scheduledFor = Instant.ofEpochMilli(triggerAtMillis).toString()
-    val pendingIntent = createSavedAlarmPendingIntent(alarmId, scheduledFor)
+    val pendingIntent = createSavedAlarmPendingIntent(alarmId, scheduledFor, soundId)
     val alarmClockInfo = AlarmManager.AlarmClockInfo(
       triggerAtMillis,
       createSavedAlarmShowIntent(alarmId, scheduledFor),
@@ -208,7 +215,7 @@ class AlarmRingingModule : Module() {
   }
 
   private fun cancelSavedAlarmOccurrence(alarmId: String) {
-    alarmManager.cancel(createSavedAlarmPendingIntent(alarmId, null))
+    alarmManager.cancel(createSavedAlarmPendingIntent(alarmId, null, null))
   }
 
   // hashCode() collisions would silently make two Saved Alarms share a PendingIntent.
@@ -221,11 +228,13 @@ class AlarmRingingModule : Module() {
   private fun createSavedAlarmPendingIntent(
     alarmId: String,
     scheduledFor: String?,
+    soundId: String?,
   ): PendingIntent {
     val intent = Intent(context, AlarmRingingReceiver::class.java).apply {
       action = ACTION_FIRE_SAVED_ALARM
       putExtra(EXTRA_ALARM_ID, alarmId)
       scheduledFor?.let { putExtra(EXTRA_SCHEDULED_FOR, it) }
+      soundId?.let { putExtra(EXTRA_SOUND_ID, it) }
     }
 
     return PendingIntent.getBroadcast(
@@ -278,11 +287,13 @@ class AlarmRingingModule : Module() {
   private fun createTestAlarmPendingIntent(
     alarmId: String?,
     scheduledFor: String?,
+    soundId: String?,
   ): PendingIntent {
     val intent = Intent(context, AlarmRingingReceiver::class.java).apply {
       action = ACTION_FIRE_TEST_ALARM
       alarmId?.let { putExtra(EXTRA_ALARM_ID, it) }
       scheduledFor?.let { putExtra(EXTRA_SCHEDULED_FOR, it) }
+      soundId?.let { putExtra(EXTRA_SOUND_ID, it) }
     }
 
     return PendingIntent.getBroadcast(
