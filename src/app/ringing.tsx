@@ -82,6 +82,11 @@ export default function RingingScreen() {
   );
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isStarting, setIsStarting] = useState(false);
+  // alarm-timer.ts's state is a module-level singleton that outlives any single screen --
+  // on mount, useAlarmTimer() can briefly return a stale 'expired' status left over from a
+  // *previous* alarm session, before the effect below has synced it for this one. Gating
+  // the expired-check on this flag avoids treating that stale snapshot as a real timeout.
+  const [isTimerSynced, setIsTimerSynced] = useState(false);
   const timer = useAlarmTimer();
   const [pulse] = useState(() => new Animated.Value(1));
 
@@ -146,6 +151,10 @@ export default function RingingScreen() {
           startRingingTimerIfNeeded(
             params.startedAt ?? new Date().toISOString(),
           );
+        } finally {
+          if (isActive) {
+            setIsTimerSynced(true);
+          }
         }
       }
 
@@ -159,7 +168,7 @@ export default function RingingScreen() {
   }, [params.startedAt]);
 
   useEffect(() => {
-    if (timer?.status === 'expired') {
+    if (isTimerSynced && timer?.status === 'expired') {
       // The alarm has been ringing since it fired -- if the Alarm Timer expires before
       // the user ever taps "start challenge" (the only other place that stops it, in
       // face-check.tsx), nothing else will ever silence it.
@@ -169,7 +178,7 @@ export default function RingingScreen() {
         params: { reason: 'no-photo-timeout' },
       });
     }
-  }, [timer?.status]);
+  }, [isTimerSynced, timer?.status]);
 
   async function handleStartChallenge() {
     setIsStarting(true);
