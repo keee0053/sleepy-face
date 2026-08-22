@@ -9,7 +9,11 @@ class AlarmRingingReceiver : BroadcastReceiver() {
   override fun onReceive(context: Context, intent: Intent) {
     val action = intent.action
 
-    if (action != ACTION_FIRE_TEST_ALARM && action != ACTION_FIRE_SAVED_ALARM) {
+    if (
+      action != ACTION_FIRE_TEST_ALARM &&
+      action != ACTION_FIRE_SAVED_ALARM &&
+      action != ACTION_FIRE_REMOTE_ACTIVATION
+    ) {
       return
     }
 
