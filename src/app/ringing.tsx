@@ -17,7 +17,6 @@ import {
 import {
   AndroidAlarmMechanicsError,
   getRingingAlarmState,
-  stopRingingAlarm,
   type RingingAlarmState,
 } from '@/services/android-alarm-mechanics';
 import {
@@ -173,7 +172,9 @@ export default function RingingScreen() {
     try {
       setErrorMessage(null);
       const activeAlarmId = ringingState?.alarmId ?? params.alarmId ?? '';
-      await stopRingingAlarm();
+      // The alarm keeps ringing through Face Check now — it only stops once the wake-up
+      // photo is actually captured (see face-check.tsx's takePhoto), not merely once the
+      // user starts the challenge.
       startTimer(ALARM_TIMER_SECONDS);
       await startWakeChallengeAttempt({ alarmId: activeAlarmId || null });
       router.replace({
