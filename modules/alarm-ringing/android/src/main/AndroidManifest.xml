@@ -27,5 +27,17 @@
     <service
       android:name=".SavedAlarmResyncTaskService"
       android:exported="false" />
+
+    <!-- Default intent-filter priority (0) beats expo-notifications' own receiving
+         service, which registers at priority -1 (see its AndroidManifest.xml) -- Firebase
+         Messaging only ever delivers to one FirebaseMessagingService, so this one wins and
+         is responsible for handling every push, not just alarm-activation ones. -->
+    <service
+      android:name=".AlarmActivationMessagingService"
+      android:exported="false">
+      <intent-filter>
+        <action android:name="com.google.firebase.MESSAGING_EVENT" />
+      </intent-filter>
+    </service>
   </application>
 </manifest>

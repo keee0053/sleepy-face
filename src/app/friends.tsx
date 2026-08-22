@@ -14,6 +14,11 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { BottomNav } from '@/components/bottom-nav';
 import { FriendListLoadingSkeleton } from '@/components/loading-skeletons';
 import { PROFILE_ICON_SOURCES } from '@/constants/profile-icons';
+import { getDevMode } from '@/services/dev-mode';
+import {
+  activateAlarm,
+  listUnconsumedFailureLogEntries,
+} from '@/services/failure-log';
 import {
   FriendServiceError,
   listFriends,
@@ -39,27 +44,59 @@ export default function FriendsScreen() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isDevMode, setIsDevMode] = useState(false);
+  // Dev-only Alarm Activation gating: which Friends currently have an unconsumed
+  // Failure Log Entry today, and which entry id to activate. No product UI/permission
+  // model beyond isDevMode -- see docs/remote-alarm-activation.
+  const [unconsumedEntryIdByFriendId, setUnconsumedEntryIdByFriendId] =
+    useState<Map<string, string>>(new Map());
+  const [activatingFriendId, setActivatingFriendId] = useState<string | null>(
+    null,
+  );
+
+  const loadFriendsAndFailures = useCallback(async () => {
+    const nextFriends = await listFriends();
+    const entries = await listUnconsumedFailureLogEntries(
+      nextFriends.map((friend) => friend.id),
+    );
+
+    return {
+      friends: nextFriends,
+      unconsumedEntryIdByFriendId: new Map(
+        entries.map((entry) => [entry.profileId, entry.id]),
+      ),
+    };
+  }, []);
 
   const loadFriends = useCallback(async () => {
     setErrorMessage(null);
     setIsRefreshing(true);
 
     try {
-      setFriends(await listFriends());
+      const result = await loadFriendsAndFailures();
+      setFriends(result.friends);
+      setUnconsumedEntryIdByFriendId(result.unconsumedEntryIdByFriendId);
     } catch (error) {
       setErrorMessage(getFriendErrorMessage(error));
     } finally {
       setIsRefreshing(false);
     }
-  }, []);
+  }, [loadFriendsAndFailures]);
 
   useEffect(() => {
     let isActive = true;
 
-    listFriends()
-      .then((nextFriends) => {
+    getDevMode().then((devMode) => {
+      if (isActive) {
+        setIsDevMode(devMode);
+      }
+    });
+
+    loadFriendsAndFailures()
+      .then((result) => {
         if (isActive) {
-          setFriends(nextFriends);
+          setFriends(result.friends);
+          setUnconsumedEntryIdByFriendId(result.unconsumedEntryIdByFriendId);
         }
       })
       .catch((error: unknown) => {
@@ -76,7 +113,32 @@ export default function FriendsScreen() {
     return () => {
       isActive = false;
     };
-  }, []);
+  }, [loadFriendsAndFailures]);
+
+  // DEV-ONLY: activates a Friend's alarm off their current unconsumed Failure Log
+  // Entry. No confirmation UI -- see docs/remote-alarm-activation.
+  const handleActivateAlarm = useCallback(
+    async (friendId: string) => {
+      const entryId = unconsumedEntryIdByFriendId.get(friendId);
+
+      if (!entryId) {
+        return;
+      }
+
+      setActivatingFriendId(friendId);
+      setErrorMessage(null);
+
+      try {
+        await activateAlarm(entryId);
+        await loadFriends();
+      } catch (error) {
+        setErrorMessage(getFriendErrorMessage(error));
+      } finally {
+        setActivatingFriendId(null);
+      }
+    },
+    [loadFriends, unconsumedEntryIdByFriendId],
+  );
 
   // DEV-ONLY: injects a mock friend card (no Supabase write) so the list layout can be previewed with content. Remove before ship.
   const handleAddMockFriend = useCallback(() => {
@@ -109,6 +171,25 @@ export default function FriendsScreen() {
         <Text style={styles.displayName}>{item.displayName}</Text>
         <Text style={styles.userId}>@{item.userId}</Text>
       </View>
+
+      {/* DEV-ONLY: Alarm Activation, gated by isDevMode. No production design -- see
+          docs/remote-alarm-activation. */}
+      {isDevMode && unconsumedEntryIdByFriendId.has(item.id) && (
+        <Pressable
+          accessibilityRole="button"
+          disabled={activatingFriendId === item.id}
+          onPress={() => handleActivateAlarm(item.id)}
+          style={({ pressed }) => [
+            styles.devActivateButton,
+            (pressed || activatingFriendId === item.id) &&
+              styles.devActivateButtonPressed,
+          ]}
+        >
+          <Text style={styles.devActivateButtonText}>
+            {activatingFriendId === item.id ? '...' : '[DEV] Activate'}
+          </Text>
+        </Pressable>
+      )}
     </View>
   );
 
@@ -246,6 +327,21 @@ const styles = StyleSheet.create({
   userId: {
     color: '#737373',
     fontSize: 13,
+  },
+  devActivateButton: {
+    backgroundColor: '#b42318',
+    borderRadius: 10,
+    marginLeft: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+  },
+  devActivateButtonPressed: {
+    opacity: 0.7,
+  },
+  devActivateButtonText: {
+    color: '#ffffff',
+    fontSize: 11,
+    fontWeight: '700',
   },
   emptyBox: {
     alignItems: 'center',

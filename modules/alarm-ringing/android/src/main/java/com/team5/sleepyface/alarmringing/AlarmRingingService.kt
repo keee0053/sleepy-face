@@ -32,7 +32,7 @@ class AlarmRingingService : Service() {
 
   override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
     when (intent?.action) {
-      ACTION_FIRE_TEST_ALARM, ACTION_FIRE_SAVED_ALARM -> {
+      ACTION_FIRE_TEST_ALARM, ACTION_FIRE_SAVED_ALARM, ACTION_FIRE_REMOTE_ACTIVATION -> {
         val alarmId = intent.getStringExtra(EXTRA_ALARM_ID) ?: return START_NOT_STICKY
         val soundId = intent.getStringExtra(EXTRA_SOUND_ID)
         startRinging(alarmId, soundId)

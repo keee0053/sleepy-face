@@ -4,6 +4,11 @@ internal const val ACTION_FIRE_TEST_ALARM =
   "com.team5.sleepyface.alarmringing.action.FIRE_TEST_ALARM"
 internal const val ACTION_FIRE_SAVED_ALARM =
   "com.team5.sleepyface.alarmringing.action.FIRE_SAVED_ALARM"
+// Started directly by AlarmActivationMessagingService on receipt of an alarm-activation
+// FCM push -- unlike the two actions above, there is no local AlarmManager broadcast
+// involved, since the remote push itself is the trigger.
+internal const val ACTION_FIRE_REMOTE_ACTIVATION =
+  "com.team5.sleepyface.alarmringing.action.FIRE_REMOTE_ACTIVATION"
 internal const val ACTION_STOP_RINGING =
   "com.team5.sleepyface.alarmringing.action.STOP_RINGING"
 

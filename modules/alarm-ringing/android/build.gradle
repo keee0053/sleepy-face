@@ -16,4 +16,8 @@ android {
 
 dependencies {
   implementation 'com.facebook.react:react-android'
+
+  // Pinned to the same version expo-notifications already pulls in, so there is one
+  // resolved firebase-messaging version across the app rather than two competing ones.
+  implementation 'com.google.firebase:firebase-messaging:25.0.1'
 }

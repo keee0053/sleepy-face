@@ -3,6 +3,7 @@ import { useEffect } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { ActionButton, challengeStyles } from '@/components/wake-challenge-ui';
+import { recordFailureEvent } from '@/services/failure-log';
 import { recordFailureAccessOutcome } from '@/services/friends-feed-access';
 import type { WakeChallengeFailureReason } from '@/services/wake-challenge-rules';
 import { clearWakeChallengeAttempt } from '@/services/wake-challenge-attempt';
@@ -44,6 +45,7 @@ export default function QuizFailureScreen() {
   useEffect(() => {
     clearWakeChallengeAttempt().catch(() => {});
     recordFailureAccessOutcome(failureReason).catch(() => {});
+    recordFailureEvent(failureReason).catch(() => {});
   }, [failureReason]);
 
   return (
