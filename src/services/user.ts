@@ -298,16 +298,19 @@ function profileFromRpcData(data: unknown): Profile {
 }
 
 export async function getMyProfile(): Promise<Profile | null> {
-  const userResult = await supabase.auth.getUser();
+  // getSession() reads the locally cached session instead of making a network
+  // round trip to revalidate the JWT (see getCurrentUserId in services/auth.ts) --
+  // the profiles query below already hits the network, no need for a second call.
+  const sessionResult = await supabase.auth.getSession();
 
-  if (userResult.error || !userResult.data.user) {
+  if (sessionResult.error || !sessionResult.data.session) {
     return null;
   }
 
   const { data, error } = await supabase
     .from('profiles')
     .select('id, user_id, display_name, icon_url, created_at')
-    .eq('id', userResult.data.user.id)
+    .eq('id', sessionResult.data.session.user.id)
     .maybeSingle();
 
   if (error) {

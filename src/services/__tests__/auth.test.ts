@@ -14,7 +14,7 @@ import {
 
 const mocks = vi.hoisted(() => ({
   coolDownAsync: vi.fn(),
-  getUser: vi.fn(),
+  getSession: vi.fn(),
   onAuthStateChange: vi.fn(),
   openAuthSessionAsync: vi.fn(),
   setSession: vi.fn(),
@@ -26,7 +26,7 @@ const mocks = vi.hoisted(() => ({
 vi.mock('@/lib/supabase', () => ({
   supabase: {
     auth: {
-      getUser: mocks.getUser,
+      getSession: mocks.getSession,
       onAuthStateChange: mocks.onAuthStateChange,
       setSession: mocks.setSession,
       signInWithOAuth: mocks.signInWithOAuth,
@@ -247,8 +247,8 @@ describe('Google Login service', () => {
   });
 
   it('returns current Auth User ID when Supabase has an authenticated user', async () => {
-    mocks.getUser.mockResolvedValue({
-      data: { user: { id: 'auth-user-id' } },
+    mocks.getSession.mockResolvedValue({
+      data: { session: { user: { id: 'auth-user-id' } } },
       error: null,
     });
 
@@ -256,8 +256,8 @@ describe('Google Login service', () => {
   });
 
   it('returns null when there is no current authenticated user', async () => {
-    mocks.getUser.mockResolvedValue({
-      data: { user: null },
+    mocks.getSession.mockResolvedValue({
+      data: { session: null },
       error: new Error('not authenticated'),
     });
 

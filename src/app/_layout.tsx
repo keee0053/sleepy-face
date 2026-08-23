@@ -1,7 +1,12 @@
 import { Stack, router, usePathname } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
-import { AppRegistry, AppState, InteractionManager } from 'react-native';
+import {
+  AppRegistry,
+  AppState,
+  InteractionManager,
+  LogBox,
+} from 'react-native';
 
 import { resyncAllScheduledAlarms } from '@/services/alarm';
 import { consumePendingWakeChallengeRoute } from '@/services/android-alarm-mechanics';
@@ -11,6 +16,7 @@ import {
   clearWakeChallengeAttempt,
   getAbandonedWakeChallengeAttemptOutcome,
   getWakeChallengeAttempt,
+  startWakeChallengeAttempt,
 } from '@/services/wake-challenge-attempt';
 
 const SAVED_ALARM_BOOT_RESYNC_TASK_NAME = 'SavedAlarmBootResync';
@@ -19,6 +25,14 @@ SplashScreen.setOptions({
   duration: 300,
   fade: true,
 });
+
+// supabase-js's own auto-refresh timer logs this to console.error whenever a token
+// refresh races a locked Keychain (e.g. the app opening from a locked-screen alarm
+// alert) -- our SecureStore adapter already treats that as "no saved session" and
+// recovers, so this is expected noise, not a real crash. Left unignored it pops a
+// full-screen LogBox in dev builds that can visually block whatever screen just
+// navigated in behind it.
+LogBox.ignoreLogs(['Auto refresh tick failed with error']);
 
 AppRegistry.registerHeadlessTask(
   SAVED_ALARM_BOOT_RESYNC_TASK_NAME,
@@ -83,9 +97,21 @@ async function checkAbandonedWakeChallengeAttempt(
   });
 }
 
+// Checks the native pending-wake-challenge flag before anything else -- this is a
+// fast local read (no network), and every second spent on the auth/profile checks
+// first is a second the app can sit on /home instead of the photo screen right
+// after the user taps 起床確認 on the lock screen alert.
 async function routePendingWakeChallengeIfReady(
   isStillActive: () => boolean,
 ): Promise<boolean> {
+  const pendingWakeChallenge = await consumePendingWakeChallengeRoute().catch(
+    () => null,
+  );
+
+  if (!isStillActive() || !pendingWakeChallenge) {
+    return false;
+  }
+
   const authUserId = await getCurrentUserId();
 
   if (!isStillActive() || !authUserId) {
@@ -98,13 +124,7 @@ async function routePendingWakeChallengeIfReady(
     return false;
   }
 
-  const pendingWakeChallenge = await consumePendingWakeChallengeRoute().catch(
-    () => null,
-  );
-
-  if (!isStillActive() || !pendingWakeChallenge) {
-    return false;
-  }
+  await startWakeChallengeAttempt({ alarmId: pendingWakeChallenge.alarmId });
 
   router.replace({
     pathname: '/face-check',
@@ -132,9 +152,20 @@ export default function RootLayout() {
       routePendingWakeChallengeIfReady(() => isActive).catch(() => {});
     });
 
+    // AlarmKit's secondary-button intent (起床確認) can fire while the app is
+    // already in the foreground -- e.g. testing a Test Alarm without ever leaving
+    // the app. In that case the AppState listener above never sees a transition to
+    // 'active' (it was already active) and no navigation happens to change
+    // `pathname` either, so nothing triggers a check. Poll while mounted as a
+    // low-cost fallback (one local UserDefaults/SharedPreferences read per tick).
+    const pollIntervalId = setInterval(() => {
+      routePendingWakeChallengeIfReady(() => isActive).catch(() => {});
+    }, 1000);
+
     return () => {
       isActive = false;
       subscription.remove();
+      clearInterval(pollIntervalId);
     };
   }, []);
 
@@ -145,6 +176,44 @@ export default function RootLayout() {
       await checkAbandonedWakeChallengeAttempt(() => isActive);
 
       if (!isActive) {
+        return;
+      }
+
+      // Checked before the profile gate below: a fast local read (no network), so a
+      // pending wake challenge gets to /face-check as soon as possible instead of
+      // waiting behind the auth/profile round trip every other route goes through.
+      const pendingWakeChallenge =
+        await consumePendingWakeChallengeRoute().catch(() => null);
+
+      if (!isActive) {
+        return;
+      }
+
+      if (pendingWakeChallenge) {
+        const authUserId = await getCurrentUserId();
+
+        if (!isActive || !authUserId) {
+          return;
+        }
+
+        const profile = await getMyProfile();
+
+        if (!isActive || !profile) {
+          return;
+        }
+
+        await startWakeChallengeAttempt({
+          alarmId: pendingWakeChallenge.alarmId,
+        });
+
+        router.replace({
+          pathname: '/face-check',
+          params: {
+            alarmId: pendingWakeChallenge.alarmId,
+            badPhotoAttempts: '0',
+            startedAt: pendingWakeChallenge.startedAt,
+          },
+        });
         return;
       }
 
@@ -177,25 +246,6 @@ export default function RootLayout() {
           router.replace('/profile-setup');
         }
 
-        return;
-      }
-
-      const pendingWakeChallenge =
-        await consumePendingWakeChallengeRoute().catch(() => null);
-
-      if (!isActive) {
-        return;
-      }
-
-      if (pendingWakeChallenge) {
-        router.replace({
-          pathname: '/face-check',
-          params: {
-            alarmId: pendingWakeChallenge.alarmId,
-            badPhotoAttempts: '0',
-            startedAt: pendingWakeChallenge.startedAt,
-          },
-        });
         return;
       }
 

@@ -13,6 +13,7 @@ import {
 const mocks = vi.hoisted(() => ({
   eq: vi.fn(),
   from: vi.fn(),
+  getSession: vi.fn(),
   getUser: vi.fn(),
   maybeSingle: vi.fn(),
   rpc: vi.fn(),
@@ -24,6 +25,7 @@ const mocks = vi.hoisted(() => ({
 vi.mock('@/lib/supabase', () => ({
   supabase: {
     auth: {
+      getSession: mocks.getSession,
       getUser: mocks.getUser,
     },
     from: mocks.from,
@@ -52,8 +54,8 @@ describe('user service', () => {
   });
 
   it('returns null when there is no authenticated user', async () => {
-    mocks.getUser.mockResolvedValue({
-      data: { user: null },
+    mocks.getSession.mockResolvedValue({
+      data: { session: null },
       error: new Error('not authenticated'),
     });
 
@@ -62,8 +64,8 @@ describe('user service', () => {
   });
 
   it('returns null when the authenticated user has no Profile yet', async () => {
-    mocks.getUser.mockResolvedValue({
-      data: { user: { id: 'auth-user-id' } },
+    mocks.getSession.mockResolvedValue({
+      data: { session: { user: { id: 'auth-user-id' } } },
       error: null,
     });
     mocks.maybeSingle.mockResolvedValue({
@@ -77,8 +79,8 @@ describe('user service', () => {
   });
 
   it('returns the current Profile when Initial Setup is complete', async () => {
-    mocks.getUser.mockResolvedValue({
-      data: { user: { id: 'auth-user-id' } },
+    mocks.getSession.mockResolvedValue({
+      data: { session: { user: { id: 'auth-user-id' } } },
       error: null,
     });
     mocks.maybeSingle.mockResolvedValue({
@@ -102,8 +104,8 @@ describe('user service', () => {
   });
 
   it('falls back to the default icon when a Profile has no recognized icon', async () => {
-    mocks.getUser.mockResolvedValue({
-      data: { user: { id: 'auth-user-id' } },
+    mocks.getSession.mockResolvedValue({
+      data: { session: { user: { id: 'auth-user-id' } } },
       error: null,
     });
     mocks.maybeSingle.mockResolvedValue({

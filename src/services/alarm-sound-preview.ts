@@ -1,4 +1,4 @@
-import { createAudioPlayer } from 'expo-audio';
+import { createAudioPlayer, setAudioModeAsync } from 'expo-audio';
 
 import type { AlarmSoundId } from '@/constants/alarm-sounds';
 
@@ -11,6 +11,21 @@ const ALARM_SOUND_PREVIEW_SOURCES: Partial<Record<AlarmSoundId, number>> = {
   gentle_chime: require('@/assets/sounds/gentle_chime.wav'),
 };
 
+// expo-audio defaults to respecting the iOS silent switch / Android silent mode
+// (playsInSilentMode: false), so without this a preview tap plays nothing at all
+// while the device is muted -- surprising for a screen whose whole point is
+// letting the user compare Alarm Sounds by ear. Set once; cheap to repeat.
+let hasEnabledSilentModePlayback = false;
+
+function ensureSilentModePlaybackEnabled(): void {
+  if (hasEnabledSilentModePlayback) {
+    return;
+  }
+
+  hasEnabledSilentModePlayback = true;
+  setAudioModeAsync({ playsInSilentMode: true }).catch(() => {});
+}
+
 // Lets a user audition an Alarm Sound option by tapping it, without touching the native
 // alarm-ringing scheduler at all. Fire-and-forget: each tap gets its own short-lived
 // player, released once playback finishes so rapid re-taps don't leak players.
@@ -20,6 +35,8 @@ export function previewAlarmSound(soundId: AlarmSoundId): void {
   if (source == null) {
     return;
   }
+
+  ensureSilentModePlaybackEnabled();
 
   const player = createAudioPlayer(source);
 

@@ -53,7 +53,17 @@
           "photosPermission": "プロフィールアイコンに設定する写真を選ぶために写真ライブラリを使用します。"
         }
       ],
-      "expo-notifications",
+      "./plugins/with-ios-disable-push-entitlement",
+      [
+        "expo-notifications",
+        {
+          "sounds": [
+            "./assets/sounds/classic_beep.wav",
+            "./assets/sounds/digital_pulse.wav",
+            "./assets/sounds/gentle_chime.wav"
+          ]
+        }
+      ],
       "expo-audio"
     ],
     "experiments": {

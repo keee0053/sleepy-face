@@ -163,14 +163,18 @@ export async function signOut(): Promise<void> {
   }
 }
 
+// Uses getSession() (reads the locally cached session) rather than getUser()
+// (which always makes a network round trip to revalidate the JWT). This runs on
+// every route change, including the wake-alarm -> face-check hand-off, where an
+// extra network round trip right as the phone reconnects is felt as UI lag.
 export async function getCurrentUserId(): Promise<string | null> {
-  const { data, error } = await supabase.auth.getUser();
+  const { data, error } = await supabase.auth.getSession();
 
   if (error) {
     return null;
   }
 
-  return data.user?.id ?? null;
+  return data.session?.user.id ?? null;
 }
 
 export function onAuthStateChange(callback: (userId: string | null) => void): {
