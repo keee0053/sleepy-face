@@ -16,7 +16,7 @@ export type QuizState =
       question: PublicQuizQuestion;
       correctAnswerCount: number;
       attemptNumber: number;
-      requiredCorrectAnswerCount: 3;
+      requiredCorrectAnswerCount: 5;
       lastAnswerCorrect: boolean | null;
     }
   | {
@@ -24,7 +24,7 @@ export type QuizState =
       question: null;
       correctAnswerCount: number;
       attemptNumber: number;
-      requiredCorrectAnswerCount: 3;
+      requiredCorrectAnswerCount: 5;
       lastAnswerCorrect: boolean;
     };
 
@@ -65,7 +65,7 @@ type StartQuizOptions = {
   random?: () => number;
 };
 
-const REQUIRED_CORRECT_ANSWER_COUNT = 3;
+const REQUIRED_CORRECT_ANSWER_COUNT = 5;
 const MIN_TWO_DIGIT_NUMBER = 10;
 const TWO_DIGIT_NUMBER_RANGE = 90;
 

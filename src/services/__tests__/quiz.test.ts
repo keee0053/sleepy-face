@@ -115,7 +115,7 @@ describe('Quiz Question service', () => {
         id: 'quiz-question-1',
         prompt: '10 + 10',
       },
-      requiredCorrectAnswerCount: 3,
+      requiredCorrectAnswerCount: 5,
       status: 'active',
     });
     if (state.status !== 'active') {
@@ -149,7 +149,7 @@ describe('Quiz Question service', () => {
         id: 'quiz-question-2',
         prompt: '19 + 28',
       },
-      requiredCorrectAnswerCount: 3,
+      requiredCorrectAnswerCount: 5,
       status: 'active',
     });
   });
@@ -169,7 +169,7 @@ describe('Quiz Question service', () => {
           id: 'quiz-question-2',
           prompt: '28 + 37',
         },
-        requiredCorrectAnswerCount: 3,
+        requiredCorrectAnswerCount: 5,
         status: 'active',
       });
     },
@@ -186,7 +186,7 @@ describe('Quiz Question service', () => {
         id: 'quiz-question-2',
         prompt: '46 + 55',
       },
-      requiredCorrectAnswerCount: 3,
+      requiredCorrectAnswerCount: 5,
       status: 'active',
     });
   });
@@ -206,31 +206,39 @@ describe('Quiz Question service', () => {
     });
   });
 
-  it('completes after three correct answers', () => {
+  it('completes after five correct answers', () => {
     quizService.startQuiz({
-      random: sequenceRandom([0, 0, 0, 0.1, 0.2, 0, 0.3, 0.4, 0]),
+      random: sequenceRandom([
+        0, 0, 0, 0.1, 0.2, 0, 0.3, 0.4, 0, 0.5, 0.6, 0, 0.7, 0.8, 0,
+      ]),
     });
 
     quizService.submitQuizAnswer('20');
     quizService.submitQuizAnswer('47');
+    quizService.submitQuizAnswer('83');
+    quizService.submitQuizAnswer('119');
 
-    expect(quizService.submitQuizAnswer('83')).toEqual({
-      attemptNumber: 3,
-      correctAnswerCount: 3,
+    expect(quizService.submitQuizAnswer('154')).toEqual({
+      attemptNumber: 5,
+      correctAnswerCount: 5,
       lastAnswerCorrect: true,
       question: null,
-      requiredCorrectAnswerCount: 3,
+      requiredCorrectAnswerCount: 5,
       status: 'completed',
     });
   });
 
   it('throws a typed error when submitting after Quiz Completion', () => {
     quizService.startQuiz({
-      random: sequenceRandom([0, 0, 0, 0.1, 0.2, 0, 0.3, 0.4, 0]),
+      random: sequenceRandom([
+        0, 0, 0, 0.1, 0.2, 0, 0.3, 0.4, 0, 0.5, 0.6, 0, 0.7, 0.8, 0,
+      ]),
     });
     quizService.submitQuizAnswer('20');
     quizService.submitQuizAnswer('47');
     quizService.submitQuizAnswer('83');
+    quizService.submitQuizAnswer('119');
+    quizService.submitQuizAnswer('154');
 
     try {
       quizService.submitQuizAnswer('1');
@@ -253,7 +261,7 @@ describe('Quiz Question service', () => {
         id: 'quiz-question-1',
         prompt: '55 + 28',
       },
-      requiredCorrectAnswerCount: 3,
+      requiredCorrectAnswerCount: 5,
       status: 'active',
     });
   });
@@ -276,7 +284,7 @@ describe('Quiz Question service', () => {
         id: 'quiz-question-1',
         prompt: '55 + 28',
       },
-      requiredCorrectAnswerCount: 3,
+      requiredCorrectAnswerCount: 5,
       status: 'active',
     });
   });
