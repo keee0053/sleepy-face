@@ -10,7 +10,7 @@ import {
   Text,
   View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 
 import { REALMOJI_OPTIONS, type RealMojiEmoji } from '@/constants/realmojis';
 import {
@@ -185,225 +185,231 @@ export function RealMojiComposer({
       presentationStyle="fullScreen"
       visible={visible}
     >
-      {stage === 'picker' ? (
-        <SafeAreaView style={styles.lightScreen}>
-          <View style={styles.header}>
-            <Pressable
-              accessibilityLabel="RealMojiを閉じる"
-              accessibilityRole="button"
-              disabled={isSubmitting}
-              hitSlop={12}
-              onPress={handleRequestClose}
-              style={styles.closeButton}
+      {/* Modal presents in its own native window on iOS, which the ambient
+          SafeAreaProvider (mounted around the app root) doesn't measure --
+          without this, SafeAreaView here reports stale/zero insets and the
+          header overlaps the status bar. Re-measuring locally fixes it. */}
+      <SafeAreaProvider>
+        {stage === 'picker' ? (
+          <SafeAreaView style={styles.lightScreen}>
+            <View style={styles.header}>
+              <Pressable
+                accessibilityLabel="RealMojiを閉じる"
+                accessibilityRole="button"
+                disabled={isSubmitting}
+                hitSlop={12}
+                onPress={handleRequestClose}
+                style={styles.closeButton}
+              >
+                <Text style={styles.closeButtonText}>×</Text>
+              </Pressable>
+            </View>
+
+            <ScrollView
+              contentContainerStyle={styles.pickerScrollContent}
+              showsVerticalScrollIndicator={false}
             >
-              <Text style={styles.closeButtonText}>×</Text>
-            </Pressable>
+              <View style={styles.pickerCopy}>
+                <Text style={styles.pickerTitle}>どの顔で返す？</Text>
+                <Text style={styles.pickerCaption}>
+                  絵文字を選んで、今の表情を撮影しよう。
+                </Text>
+              </View>
+
+              <View style={styles.optionGrid}>
+                {REALMOJI_OPTIONS.map((option) => (
+                  <Pressable
+                    accessibilityLabel={`${option.label}の顔を撮影`}
+                    accessibilityRole="button"
+                    key={option.emoji}
+                    onPress={() => handleSelectEmoji(option.emoji)}
+                    style={({ pressed }) => [
+                      styles.optionButton,
+                      pressed && styles.buttonPressed,
+                    ]}
+                  >
+                    <Text style={styles.optionEmoji}>{option.emoji}</Text>
+                    <Text style={styles.optionLabel}>{option.label}</Text>
+                  </Pressable>
+                ))}
+              </View>
+
+              {existingRealMoji && (
+                <View style={styles.currentRealMojiCard}>
+                  <View style={styles.currentRealMojiPreview}>
+                    <Image
+                      contentFit="cover"
+                      source={{ uri: existingRealMoji.imageUrl }}
+                      style={styles.currentRealMojiImage}
+                    />
+                    <Text style={styles.currentRealMojiEmoji}>
+                      {existingRealMoji.emoji}
+                    </Text>
+                  </View>
+
+                  <View style={styles.currentRealMojiCopy}>
+                    <Text style={styles.currentRealMojiTitle}>
+                      リアクション済み
+                    </Text>
+                    <Text style={styles.currentRealMojiCaption}>
+                      別の表情を撮ると差し替えられます。
+                    </Text>
+                  </View>
+
+                  <Pressable
+                    accessibilityRole="button"
+                    disabled={isSubmitting}
+                    onPress={handleRemove}
+                    style={({ pressed }) => [
+                      styles.removeButton,
+                      pressed && styles.buttonPressed,
+                      isSubmitting && styles.buttonDisabled,
+                    ]}
+                  >
+                    {isSubmitting ? (
+                      <ActivityIndicator color="#b42318" size="small" />
+                    ) : (
+                      <Text style={styles.removeButtonText}>削除</Text>
+                    )}
+                  </Pressable>
+                </View>
+              )}
+
+              {errorMessage && (
+                <Text accessibilityRole="alert" style={styles.errorText}>
+                  {errorMessage}
+                </Text>
+              )}
+            </ScrollView>
+          </SafeAreaView>
+        ) : stage === 'camera' ? (
+          <View style={styles.cameraScreen}>
+            <CameraView
+              facing="front"
+              mirror
+              onCameraReady={() => setIsCameraReady(true)}
+              onMountError={(event) => setErrorMessage(event.message)}
+              ref={cameraRef}
+              style={styles.camera}
+            />
+
+            <SafeAreaView edges={['top']} style={styles.cameraHeader}>
+              <Pressable
+                accessibilityLabel="RealMojiの選択に戻る"
+                accessibilityRole="button"
+                disabled={isCapturing}
+                onPress={() => setStage('picker')}
+                style={styles.cameraBackButton}
+              >
+                <Text style={styles.cameraBackText}>×</Text>
+              </Pressable>
+
+              <View style={styles.cameraPrompt}>
+                <Text style={styles.cameraPromptEmoji}>{selectedEmoji}</Text>
+                <Text style={styles.cameraPromptText}>この顔で返そう</Text>
+              </View>
+            </SafeAreaView>
+
+            <SafeAreaView edges={['bottom']} style={styles.cameraControls}>
+              {errorMessage && (
+                <Text accessibilityRole="alert" style={styles.cameraErrorText}>
+                  {errorMessage}
+                </Text>
+              )}
+
+              <Pressable
+                accessibilityLabel="RealMojiを撮影"
+                accessibilityRole="button"
+                disabled={!isCameraReady || isCapturing}
+                onPress={handleTakePhoto}
+                style={({ pressed }) => [
+                  styles.shutterOuter,
+                  pressed && styles.buttonPressed,
+                  (!isCameraReady || isCapturing) && styles.buttonDisabled,
+                ]}
+              >
+                {isCapturing ? (
+                  <ActivityIndicator color="#171717" />
+                ) : (
+                  <View style={styles.shutterInner} />
+                )}
+              </Pressable>
+            </SafeAreaView>
           </View>
-
-          <ScrollView
-            contentContainerStyle={styles.pickerScrollContent}
-            showsVerticalScrollIndicator={false}
-          >
-            <View style={styles.pickerCopy}>
-              <Text style={styles.pickerTitle}>どの顔で返す？</Text>
-              <Text style={styles.pickerCaption}>
-                絵文字を選んで、今の表情を撮影しよう。
-              </Text>
+        ) : (
+          <SafeAreaView style={styles.previewScreen}>
+            <View style={styles.header}>
+              <Pressable
+                accessibilityLabel="RealMojiの選択に戻る"
+                accessibilityRole="button"
+                disabled={isSubmitting}
+                hitSlop={12}
+                onPress={() => setStage('picker')}
+                style={styles.closeButton}
+              >
+                <Text style={styles.closeButtonText}>×</Text>
+              </Pressable>
+              <Text style={styles.headerTitle}>この顔で返す？</Text>
             </View>
 
-            <View style={styles.optionGrid}>
-              {REALMOJI_OPTIONS.map((option) => (
-                <Pressable
-                  accessibilityLabel={`${option.label}の顔を撮影`}
-                  accessibilityRole="button"
-                  key={option.emoji}
-                  onPress={() => handleSelectEmoji(option.emoji)}
-                  style={({ pressed }) => [
-                    styles.optionButton,
-                    pressed && styles.buttonPressed,
-                  ]}
-                >
-                  <Text style={styles.optionEmoji}>{option.emoji}</Text>
-                  <Text style={styles.optionLabel}>{option.label}</Text>
-                </Pressable>
-              ))}
-            </View>
-
-            {existingRealMoji && (
-              <View style={styles.currentRealMojiCard}>
-                <View style={styles.currentRealMojiPreview}>
+            <ScrollView
+              contentContainerStyle={styles.previewScrollContent}
+              showsVerticalScrollIndicator={false}
+            >
+              <View style={styles.previewImageWrapper}>
+                {!!capturedPhotoUri && (
                   <Image
                     contentFit="cover"
-                    source={{ uri: existingRealMoji.imageUrl }}
-                    style={styles.currentRealMojiImage}
+                    source={{ uri: capturedPhotoUri }}
+                    style={styles.previewImage}
                   />
-                  <Text style={styles.currentRealMojiEmoji}>
-                    {existingRealMoji.emoji}
-                  </Text>
+                )}
+                <View style={styles.previewEmojiBadge}>
+                  <Text style={styles.previewEmoji}>{selectedEmoji}</Text>
                 </View>
+              </View>
 
-                <View style={styles.currentRealMojiCopy}>
-                  <Text style={styles.currentRealMojiTitle}>
-                    リアクション済み
-                  </Text>
-                  <Text style={styles.currentRealMojiCaption}>
-                    別の表情を撮ると差し替えられます。
-                  </Text>
-                </View>
+              {errorMessage && (
+                <Text accessibilityRole="alert" style={styles.errorText}>
+                  {errorMessage}
+                </Text>
+              )}
+
+              <View style={styles.previewActions}>
+                <Pressable
+                  accessibilityRole="button"
+                  disabled={isSubmitting}
+                  onPress={handleRetake}
+                  style={({ pressed }) => [
+                    styles.secondaryButton,
+                    pressed && styles.buttonPressed,
+                    isSubmitting && styles.buttonDisabled,
+                  ]}
+                >
+                  <Text style={styles.secondaryButtonText}>撮り直す</Text>
+                </Pressable>
 
                 <Pressable
                   accessibilityRole="button"
                   disabled={isSubmitting}
-                  onPress={handleRemove}
+                  onPress={handleSend}
                   style={({ pressed }) => [
-                    styles.removeButton,
+                    styles.primaryButton,
                     pressed && styles.buttonPressed,
                     isSubmitting && styles.buttonDisabled,
                   ]}
                 >
                   {isSubmitting ? (
-                    <ActivityIndicator color="#b42318" size="small" />
+                    <ActivityIndicator color="#ffffff" />
                   ) : (
-                    <Text style={styles.removeButtonText}>削除</Text>
+                    <Text style={styles.primaryButtonText}>送信</Text>
                   )}
                 </Pressable>
               </View>
-            )}
-
-            {errorMessage && (
-              <Text accessibilityRole="alert" style={styles.errorText}>
-                {errorMessage}
-              </Text>
-            )}
-          </ScrollView>
-        </SafeAreaView>
-      ) : stage === 'camera' ? (
-        <View style={styles.cameraScreen}>
-          <CameraView
-            facing="front"
-            mirror
-            onCameraReady={() => setIsCameraReady(true)}
-            onMountError={(event) => setErrorMessage(event.message)}
-            ref={cameraRef}
-            style={styles.camera}
-          />
-
-          <SafeAreaView edges={['top']} style={styles.cameraHeader}>
-            <Pressable
-              accessibilityLabel="RealMojiの選択に戻る"
-              accessibilityRole="button"
-              disabled={isCapturing}
-              onPress={() => setStage('picker')}
-              style={styles.cameraBackButton}
-            >
-              <Text style={styles.cameraBackText}>×</Text>
-            </Pressable>
-
-            <View style={styles.cameraPrompt}>
-              <Text style={styles.cameraPromptEmoji}>{selectedEmoji}</Text>
-              <Text style={styles.cameraPromptText}>この顔で返そう</Text>
-            </View>
+            </ScrollView>
           </SafeAreaView>
-
-          <SafeAreaView edges={['bottom']} style={styles.cameraControls}>
-            {errorMessage && (
-              <Text accessibilityRole="alert" style={styles.cameraErrorText}>
-                {errorMessage}
-              </Text>
-            )}
-
-            <Pressable
-              accessibilityLabel="RealMojiを撮影"
-              accessibilityRole="button"
-              disabled={!isCameraReady || isCapturing}
-              onPress={handleTakePhoto}
-              style={({ pressed }) => [
-                styles.shutterOuter,
-                pressed && styles.buttonPressed,
-                (!isCameraReady || isCapturing) && styles.buttonDisabled,
-              ]}
-            >
-              {isCapturing ? (
-                <ActivityIndicator color="#171717" />
-              ) : (
-                <View style={styles.shutterInner} />
-              )}
-            </Pressable>
-          </SafeAreaView>
-        </View>
-      ) : (
-        <SafeAreaView style={styles.previewScreen}>
-          <View style={styles.header}>
-            <Pressable
-              accessibilityLabel="RealMojiの選択に戻る"
-              accessibilityRole="button"
-              disabled={isSubmitting}
-              hitSlop={12}
-              onPress={() => setStage('picker')}
-              style={styles.closeButton}
-            >
-              <Text style={styles.closeButtonText}>×</Text>
-            </Pressable>
-            <Text style={styles.headerTitle}>この顔で返す？</Text>
-          </View>
-
-          <ScrollView
-            contentContainerStyle={styles.previewScrollContent}
-            showsVerticalScrollIndicator={false}
-          >
-            <View style={styles.previewImageWrapper}>
-              {!!capturedPhotoUri && (
-                <Image
-                  contentFit="cover"
-                  source={{ uri: capturedPhotoUri }}
-                  style={styles.previewImage}
-                />
-              )}
-              <View style={styles.previewEmojiBadge}>
-                <Text style={styles.previewEmoji}>{selectedEmoji}</Text>
-              </View>
-            </View>
-
-            {errorMessage && (
-              <Text accessibilityRole="alert" style={styles.errorText}>
-                {errorMessage}
-              </Text>
-            )}
-
-            <View style={styles.previewActions}>
-              <Pressable
-                accessibilityRole="button"
-                disabled={isSubmitting}
-                onPress={handleRetake}
-                style={({ pressed }) => [
-                  styles.secondaryButton,
-                  pressed && styles.buttonPressed,
-                  isSubmitting && styles.buttonDisabled,
-                ]}
-              >
-                <Text style={styles.secondaryButtonText}>撮り直す</Text>
-              </Pressable>
-
-              <Pressable
-                accessibilityRole="button"
-                disabled={isSubmitting}
-                onPress={handleSend}
-                style={({ pressed }) => [
-                  styles.primaryButton,
-                  pressed && styles.buttonPressed,
-                  isSubmitting && styles.buttonDisabled,
-                ]}
-              >
-                {isSubmitting ? (
-                  <ActivityIndicator color="#ffffff" />
-                ) : (
-                  <Text style={styles.primaryButtonText}>送信</Text>
-                )}
-              </Pressable>
-            </View>
-          </ScrollView>
-        </SafeAreaView>
-      )}
+        )}
+      </SafeAreaProvider>
     </Modal>
   );
 }
