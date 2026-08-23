@@ -1,3 +1,4 @@
+import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { useState } from 'react';
 import {
@@ -103,17 +104,13 @@ export function PhotoRealMojiBar({
             pressed && styles.buttonPressed,
           ]}
         >
-          <Text style={styles.composeButtonEmoji}>
-            {viewerRealMoji?.emoji ?? '📸'}
-          </Text>
-          <Text
-            style={[
-              styles.composeButtonText,
-              viewerRealMoji && styles.composeButtonTextActive,
-            ]}
-          >
-            {viewerRealMoji ? '撮り直す' : '顔で返す'}
-          </Text>
+          {viewerRealMoji ? (
+            <Text style={styles.composeButtonEmoji}>
+              {viewerRealMoji.emoji}
+            </Text>
+          ) : (
+            <Ionicons color="#525252" name="happy-outline" size={20} />
+          )}
         </Pressable>
       </View>
 
@@ -166,11 +163,9 @@ const styles = StyleSheet.create({
     borderColor: '#f1f1f1',
     borderRadius: 20,
     borderWidth: 1,
-    flexDirection: 'row',
-    gap: 7,
-    minHeight: 40,
-    paddingHorizontal: 13,
-    paddingVertical: 7,
+    height: 40,
+    justifyContent: 'center',
+    width: 40,
   },
   composeButtonActive: {
     backgroundColor: '#fff7ed',
@@ -178,14 +173,6 @@ const styles = StyleSheet.create({
   },
   composeButtonEmoji: {
     fontSize: 18,
-  },
-  composeButtonText: {
-    color: '#525252',
-    fontSize: 13,
-    fontWeight: '800',
-  },
-  composeButtonTextActive: {
-    color: '#c2410c',
   },
   countText: {
     color: '#525252',

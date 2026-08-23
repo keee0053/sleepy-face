@@ -455,7 +455,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     flexDirection: 'row',
     gap: 12,
-    justifyContent: 'space-between',
+    justifyContent: 'flex-start',
     paddingTop: 10,
   },
   reactionButtonPressed: {

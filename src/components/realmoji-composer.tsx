@@ -198,7 +198,6 @@ export function RealMojiComposer({
             >
               <Text style={styles.closeButtonText}>×</Text>
             </Pressable>
-            <Text style={styles.headerTitle}>RealMoji</Text>
           </View>
 
           <ScrollView
@@ -206,7 +205,7 @@ export function RealMojiComposer({
             showsVerticalScrollIndicator={false}
           >
             <View style={styles.pickerCopy}>
-              <Text style={styles.pickerTitle}>どの顔で煮る？</Text>
+              <Text style={styles.pickerTitle}>どの顔で返す？</Text>
               <Text style={styles.pickerCaption}>
                 絵文字を選んで、今の表情を撮影しよう。
               </Text>
