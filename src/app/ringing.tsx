@@ -1,5 +1,5 @@
 import { router, useLocalSearchParams } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   Animated,
   Easing,
@@ -157,8 +157,21 @@ export default function RingingScreen() {
     };
   }, [params.startedAt]);
 
+  // Edge-triggered on purpose: alarm-timer.ts is a module-level singleton, so the very
+  // first status this screen observes can be a stale 'expired' left over from a
+  // previous, already-finished Wake Up Challenge (whose timer never gets reset until
+  // someone starts a new one) rather than this ringing session's own timer actually
+  // running out (that reset happens in the effect above, deferred a tick via
+  // setTimeout, so it hasn't necessarily run yet on this same first render). Only a
+  // genuine running -> expired transition -- never an already-expired value seen on
+  // mount -- means this session's timer really did run out.
+  const previousTimerStatusRef = useRef(timer?.status);
+
   useEffect(() => {
-    if (timer?.status === 'expired') {
+    const previousStatus = previousTimerStatusRef.current;
+    previousTimerStatusRef.current = timer?.status;
+
+    if (previousStatus === 'running' && timer?.status === 'expired') {
       router.replace({
         pathname: '/quiz-failure',
         params: { reason: 'no-photo-timeout' },

@@ -54,9 +54,19 @@ export default function FaceCheckScreen() {
   const [isBusy, setIsBusy] = useState(false);
   const [isOpeningCamera, setIsOpeningCamera] = useState(false);
   const badPhotoAttempts = Number(params.badPhotoAttempts ?? '0') || 0;
+  // Edge-triggered on purpose: alarm-timer.ts is a module-level singleton, so the very
+  // first status this screen observes can be a stale 'expired' left over from a
+  // previous, already-finished Wake Up Challenge (whose timer never gets reset until
+  // someone starts a new one) rather than this session's own timer actually running
+  // out. Only a genuine running -> expired transition -- never an already-expired
+  // value seen on mount -- means this attempt's timer really did run out.
+  const previousTimerStatusRef = useRef(timer?.status);
 
   useEffect(() => {
-    if (timer?.status === 'expired') {
+    const previousStatus = previousTimerStatusRef.current;
+    previousTimerStatusRef.current = timer?.status;
+
+    if (previousStatus === 'running' && timer?.status === 'expired') {
       router.replace({
         pathname: '/quiz-failure',
         params: { reason: 'no-photo-timeout' },
