@@ -153,8 +153,11 @@ describe('getAbandonedWakeChallengeAttemptOutcome', () => {
     });
   });
 
-  it('reports abandonment for a leftover record found at launch', () => {
-    expect(getAbandonedWakeChallengeAttemptOutcome(storedRecord())).toEqual({
+  it('reports abandonment for a leftover record found well after it started', () => {
+    const record = storedRecord();
+    const now = new Date('2026-08-19T00:05:00.000Z');
+
+    expect(getAbandonedWakeChallengeAttemptOutcome(record, now)).toEqual({
       abandoned: true,
       blockedLocalDay: '2026-08-19',
     });
@@ -162,10 +165,31 @@ describe('getAbandonedWakeChallengeAttemptOutcome', () => {
 
   it('blocks the record own local day even when checked on a later day', () => {
     const record = storedRecord({ localDay: '2026-08-18' });
+    const now = new Date('2026-08-19T00:05:00.000Z');
 
-    expect(getAbandonedWakeChallengeAttemptOutcome(record)).toEqual({
+    expect(getAbandonedWakeChallengeAttemptOutcome(record, now)).toEqual({
       abandoned: true,
       blockedLocalDay: '2026-08-18',
     });
+  });
+
+  it('does not report abandonment for a record still within the grace period', () => {
+    const record = storedRecord({ startedAt: '2026-08-19T00:00:00.000Z' });
+    const now = new Date('2026-08-19T00:01:00.000Z');
+
+    expect(getAbandonedWakeChallengeAttemptOutcome(record, now)).toEqual({
+      abandoned: false,
+    });
+  });
+
+  it('treats an unparsable startedAt as abandoned regardless of when checked', () => {
+    const record = storedRecord({ startedAt: 'not-a-date' });
+
+    expect(
+      getAbandonedWakeChallengeAttemptOutcome(
+        record,
+        new Date('2026-08-19T00:00:01.000Z'),
+      ),
+    ).toEqual({ abandoned: true, blockedLocalDay: '2026-08-19' });
   });
 });

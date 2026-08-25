@@ -150,10 +150,29 @@ export type AbandonedWakeChallengeAttemptOutcome =
       abandoned: false;
     };
 
+// Generous grace period covering the full Wake Up Challenge timer (see
+// ALARM_TIMER_SECONDS in wake-challenge-ui.tsx) plus slack for photo upload/quiz
+// interaction lag. A record found younger than this could still be a genuinely active
+// attempt whose process merely restarted (e.g. the OS reclaimed memory in the
+// background) rather than one the user actually walked away from -- treating it as
+// abandoned this early would show a false "you quit" failure screen the moment they
+// reopen the app, even though nothing has actually gone wrong yet.
+const ABANDONED_GRACE_PERIOD_MS = 2 * 60 * 1000;
+
 export function getAbandonedWakeChallengeAttemptOutcome(
   record: WakeChallengeAttemptRecord | null,
+  now: Date = new Date(),
 ): AbandonedWakeChallengeAttemptOutcome {
   if (!record) {
+    return { abandoned: false };
+  }
+
+  const startedAtMs = Date.parse(record.startedAt);
+  const elapsedMs = Number.isFinite(startedAtMs)
+    ? now.getTime() - startedAtMs
+    : Infinity;
+
+  if (elapsedMs < ABANDONED_GRACE_PERIOD_MS) {
     return { abandoned: false };
   }
 
