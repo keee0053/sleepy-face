@@ -11,6 +11,7 @@ import {
   getAbandonedWakeChallengeAttemptOutcome,
   getWakeChallengeAttempt,
 } from '@/services/wake-challenge-attempt';
+import { registerWakeFriendNotificationHandlers } from '@/services/wake-friend-notifications';
 import {
   NotoSansJP_400Regular,
   NotoSansJP_500Medium,
@@ -96,6 +97,10 @@ export default function RootLayout() {
     NotoSansJP_700Bold,
   });
   //todo:ロードの完了/未完了を判定して、未完了の場合はローディングを入れる
+
+  useEffect(() => {
+    return registerWakeFriendNotificationHandlers();
+  }, []);
 
   useEffect(() => {
     let isActive = true;

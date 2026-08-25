@@ -59,6 +59,22 @@ export async function listWakeFriendTargets(
   });
 }
 
+// Called once per failed Wake Up Challenge attempt (see quiz-failure.tsx and
+// quiz-failure-photo.tsx) so friends can see it and, if they choose, ring this user's
+// alarm remotely. Best-effort: a failure to log here must never block the failure screen
+// itself from rendering, matching the existing recordFailureAccessOutcome call pattern.
+export async function logWakeChallengeFailure(): Promise<void> {
+  const { data: userData, error: userError } = await supabase.auth.getUser();
+
+  if (userError || !userData.user) {
+    return;
+  }
+
+  await supabase
+    .from('failure_log_entries')
+    .insert({ profile_id: userData.user.id });
+}
+
 export async function activateWakeFriendAlarm(
   failureEntryId: string,
 ): Promise<void> {

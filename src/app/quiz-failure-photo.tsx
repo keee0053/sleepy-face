@@ -8,6 +8,7 @@ import { recordFailureAccessOutcome } from '@/services/friends-feed-access';
 import { recordQuizFailurePhoto } from '@/services/quiz';
 import { getFailureAccessOutcome } from '@/services/wake-challenge-rules';
 import { clearWakeChallengeAttempt } from '@/services/wake-challenge-attempt';
+import { logWakeChallengeFailure } from '@/services/wake-friends';
 
 type UploadStatus = 'checking' | 'failed' | 'uploaded';
 
@@ -73,6 +74,7 @@ export default function QuizFailurePhotoScreen() {
     }
 
     recordFailureAccessOutcome(failureReason).catch(() => {});
+    logWakeChallengeFailure().catch(() => {});
   }, [failureReason, uploadStatus]);
   const actionLabel =
     accessOutcome === 'allowed' ? 'フィードへ進む' : 'アラームへ戻る';

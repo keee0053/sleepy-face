@@ -6,6 +6,7 @@ import { ActionButton, challengeStyles } from '@/components/wake-challenge-ui';
 import { recordFailureAccessOutcome } from '@/services/friends-feed-access';
 import type { WakeChallengeFailureReason } from '@/services/wake-challenge-rules';
 import { clearWakeChallengeAttempt } from '@/services/wake-challenge-attempt';
+import { logWakeChallengeFailure } from '@/services/wake-friends';
 
 type NoPhotoFailureReason = Extract<
   WakeChallengeFailureReason,
@@ -44,6 +45,7 @@ export default function QuizFailureScreen() {
   useEffect(() => {
     clearWakeChallengeAttempt().catch(() => {});
     recordFailureAccessOutcome(failureReason).catch(() => {});
+    logWakeChallengeFailure().catch(() => {});
   }, [failureReason]);
 
   return (
