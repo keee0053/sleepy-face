@@ -14,7 +14,13 @@
         "foregroundImage": "./assets/images/android-adaptive-icon-foreground.png"
       },
       "predictiveBackGestureEnabled": false,
-      "permissions": ["android.permission.CAMERA"],
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.MODIFY_AUDIO_SETTINGS",
+        "android.permission.FOREGROUND_SERVICE",
+        "android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK"
+      ],
       "googleServicesFile": "./google-services.json"
     },
     "web": {
@@ -57,10 +63,10 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "c6f23530-8c9c-4f32-aa96-e593f6b00324"
+        "projectId": "305843da-b8c6-435b-a06d-3abd34412469"
       }
     },
-    "owner": "handsomeks-team",
+    "owner": "eisuke.s",
     "ios": {
       "bundleIdentifier": "com.team5.sleepyface"
     }

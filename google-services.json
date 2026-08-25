@@ -1,26 +1,36 @@
 {
   "project_info": {
-    "project_number": "1040144669843",
-    "project_id": "sleepy-face",
-    "storage_bucket": "sleepy-face.firebasestorage.app"
+    "project_number": "896842612754",
+    "project_id": "sleepy-face-personal",
+    "storage_bucket": "sleepy-face-personal.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:1040144669843:android:a3c5324a78e05e6d5a4166",
+        "mobilesdk_app_id": "1:896842612754:android:3fc0f2707bc61bf001d8cb",
         "android_client_info": {
           "package_name": "com.team5.sleepyface"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "896842612754-8ml2f48durpbf7iu28orqisp1hpg36p5.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
-          "current_key": "AIzaSyBDlz07GzGu9x8wHgSH3jVA9-Zt1I1ZCUs"
+          "current_key": "AIzaSyD-jzNjidllxmnA_ua3rSeDsXE5aXg8I-w"
         }
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "896842612754-8ml2f48durpbf7iu28orqisp1hpg36p5.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
         }
       }
     }
