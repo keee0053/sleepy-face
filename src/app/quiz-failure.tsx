@@ -3,6 +3,7 @@ import { useEffect } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { ActionButton, challengeStyles } from '@/components/wake-challenge-ui';
+import { stopRingingAlarm } from '@/services/android-alarm-mechanics';
 import { recordFailureAccessOutcome } from '@/services/friends-feed-access';
 import type { WakeChallengeFailureReason } from '@/services/wake-challenge-rules';
 import { clearWakeChallengeAttempt } from '@/services/wake-challenge-attempt';
@@ -46,6 +47,11 @@ export default function QuizFailureScreen() {
     clearWakeChallengeAttempt().catch(() => {});
     recordFailureAccessOutcome(failureReason).catch(() => {});
     logWakeChallengeFailure().catch(() => {});
+    // The Wake Up Challenge is over (failed) at this point -- nothing further in the
+    // app can advance it, so the alarm must stop here too, not just on success/the 3rd
+    // Bad Photo Attempt (see face-check.tsx). Otherwise it rings with no in-app way to
+    // silence it.
+    stopRingingAlarm().catch(() => {});
   }, [failureReason]);
 
   return (

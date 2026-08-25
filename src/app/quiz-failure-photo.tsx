@@ -4,6 +4,7 @@ import { Image, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { LoadingIndicator } from '@/components/loading';
 import { ActionButton, challengeStyles } from '@/components/wake-challenge-ui';
+import { stopRingingAlarm } from '@/services/android-alarm-mechanics';
 import { recordFailureAccessOutcome } from '@/services/friends-feed-access';
 import { recordQuizFailurePhoto } from '@/services/quiz';
 import { getFailureAccessOutcome } from '@/services/wake-challenge-rules';
@@ -75,6 +76,9 @@ export default function QuizFailurePhotoScreen() {
 
     recordFailureAccessOutcome(failureReason).catch(() => {});
     logWakeChallengeFailure().catch(() => {});
+    // See quiz-failure.tsx: the Challenge is over (the quiz timed out), so the alarm
+    // must stop here too or it rings with no in-app way to silence it.
+    stopRingingAlarm().catch(() => {});
   }, [failureReason, uploadStatus]);
   const actionLabel =
     accessOutcome === 'allowed' ? 'フィードへ進む' : 'アラームへ戻る';
