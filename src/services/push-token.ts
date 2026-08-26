@@ -49,7 +49,7 @@ async function getRequiredProfileId(): Promise<string> {
 export async function registerPushToken(
   provider: NotificationPermissionsProvider = expoNotificationsProvider,
 ): Promise<RegisterPushTokenResult> {
-  const profileId = await getRequiredProfileId();
+  await getRequiredProfileId();
 
   const currentPermissions = await provider.getPermissionsAsync();
   const permissions =
@@ -63,15 +63,17 @@ export async function registerPushToken(
 
   const { data: expoPushToken } = await provider.getExpoPushTokenAsync();
 
-  // Upserts by token, not by profile: a token identifies an app install, so if the same
-  // install re-registers under a different profile (e.g. a new user logs in on this
-  // device), the row is reassigned to the current profile rather than duplicated.
-  const { error } = await supabase
-    .from('push_tokens')
-    .upsert(
-      { profile_id: profileId, token: expoPushToken },
-      { onConflict: 'token' },
-    );
+  // Registers by token, not by profile: a token identifies an app install, so if the
+  // same install re-registers under a different profile (e.g. a new user logs in on
+  // this device), the row is reassigned to the current profile rather than duplicated.
+  // Goes through a security definer function (register_push_token) rather than a plain
+  // upsert -- reassigning an existing row to a different profile_id via `INSERT ... ON
+  // CONFLICT DO UPDATE` under RLS hits a Postgres edge case ("new row violates
+  // row-level security policy (USING expression)") that a permissive UPDATE policy
+  // alone doesn't reliably clear.
+  const { error } = await supabase.rpc('register_push_token', {
+    p_token: expoPushToken,
+  });
 
   if (error) {
     throw new PushTokenServiceError(

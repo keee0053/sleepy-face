@@ -18,10 +18,14 @@ export type PushTokenRow = {
   token: string;
 };
 
+// Deliberately data-only (no title/body) -- on Android, a push carrying a `notification`
+// payload only reaches the app's JS via a tap once backgrounded/killed (the OS just shows
+// it directly instead), which is why the alarm used to fail to fire unless the app was
+// already open. A data-only message is always delivered to
+// registerWakeFriendNotificationHandlers's background task regardless of app state, which
+// schedules the alarm and posts its own local notification for the "you were woken" banner.
 export type PushMessage = {
   to: string;
-  title: string;
-  body: string;
   data: {
     type: 'wake-friend-activate';
     failureEntryId: string;
@@ -59,19 +63,23 @@ export type ActivateWakeFriendAlarmDeps = {
     requesterProfileId: string,
     targetProfileId: string,
   ): Promise<boolean>;
-  markActivated(entryId: string, now: Date): Promise<void>;
+  // Marks every one of the target Profile's still-unconsumed Failure Log Entries
+  // activated, not just the one named by entryId -- a Profile can rack up more than one
+  // unconsumed entry in a day (e.g. failing the Wake Up Challenge more than once before
+  // being woken), and activating their alarm once should resolve all of them, or the
+  // target would immediately reappear as an activatable Wake Friend Target for their
+  // other entries.
+  markActivated(targetProfileId: string, now: Date): Promise<void>;
   listPushTokens(profileId: string): Promise<PushTokenRow[]>;
   sendPush(messages: PushMessage[]): Promise<void>;
 };
 
-const ENTRY_VALIDITY_WINDOW_MS = 24 * 60 * 60 * 1000;
+const ENTRY_VALIDITY_WINDOW_MS = 30 * 60 * 1000;
 
-// A Failure Log Entry is only valid to activate for 24 hours after it was logged --
-// listWakeFriendTargets in src/services/wake-friends.ts already filters to the client's
-// local "today" for display, but that alone isn't trustworthy server-side (a stale or
-// tampered request could still name an old entryId directly). A rolling 24h window
-// avoids the ambiguity of "same calendar day" across the requester's and target's
-// different local timezones.
+// A Failure Log Entry is only valid to activate for 30 minutes after it was logged --
+// listWakeFriendTargets in src/services/wake-friends.ts already filters to the same
+// rolling window for display, but that alone isn't trustworthy server-side (a stale or
+// tampered request could still name an old entryId directly).
 function isWithinValidityWindow(createdAt: Date, now: Date): boolean {
   return now.getTime() - createdAt.getTime() <= ENTRY_VALIDITY_WINDOW_MS;
 }
@@ -82,14 +90,12 @@ export function buildWakeFriendPushMessages(
   tokens: string[],
 ): PushMessage[] {
   return tokens.map((token) => ({
-    body: `${activatedByDisplayName}があなたのアラームを鳴らしました。`,
     data: {
       activatedByDisplayName,
       failureEntryId,
       type: 'wake-friend-activate',
     },
     priority: 'high',
-    title: '起こしてもらいました！',
     to: token,
   }));
 }
@@ -142,7 +148,7 @@ export async function activateWakeFriendAlarm(
     );
   }
 
-  await deps.markActivated(entryId, now);
+  await deps.markActivated(entry.profile_id, now);
 
   const requesterProfile = await deps.getRequesterProfile(requesterProfileId);
   const activatedByDisplayName = requesterProfile?.display_name ?? '友達';

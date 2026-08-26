@@ -26,7 +26,9 @@ type NativeAndroidAlarmMechanicsModule = {
   canScheduleExactAlarms(): Promise<boolean>;
   getNotificationPermissionStatus(): Promise<NotificationPermissionStatus>;
   getRingingAlarmState(): Promise<RingingAlarmState | null>;
+  isIgnoringBatteryOptimizations(): Promise<boolean>;
   openExactAlarmSettings(): Promise<void>;
+  requestIgnoreBatteryOptimizations(): Promise<void>;
   requestNotificationPermission(): Promise<NotificationPermissionStatus>;
   scheduleSavedAlarmOccurrence(
     alarmId: string,
@@ -126,6 +128,14 @@ export function openExactAlarmSettings(): Promise<void> {
   return callNative((module) => module.openExactAlarmSettings());
 }
 
+export function isIgnoringBatteryOptimizations(): Promise<boolean> {
+  return callNative((module) => module.isIgnoringBatteryOptimizations());
+}
+
+export function requestIgnoreBatteryOptimizations(): Promise<void> {
+  return callNative((module) => module.requestIgnoreBatteryOptimizations());
+}
+
 export function getNotificationPermissionStatus(): Promise<NotificationPermissionStatus> {
   return callNative((module) => module.getNotificationPermissionStatus());
 }
@@ -172,9 +182,18 @@ export type EnsureAlarmPermissionsResult =
   | { granted: true }
   | {
       granted: false;
-      reason: 'exact_alarm_unavailable' | 'notification_permission_denied';
+      reason:
+        | 'exact_alarm_unavailable'
+        | 'notification_permission_denied'
+        | 'battery_optimization_enabled';
     };
 
+// Requested last, after the two blocking permissions: unlike those, being excluded from
+// battery optimization doesn't stop an alarm this device already knows about from
+// firing (AlarmManager.setAlarmClock is Doze-exempt on its own) -- it only affects how
+// promptly a wake-friend push (see wake-friend-notifications.ts) reaches this device to
+// schedule that alarm in the first place, so it's presented as one more step rather
+// than a hard blocker.
 export async function ensureAlarmPermissions(): Promise<EnsureAlarmPermissionsResult> {
   const notificationStatus = await getNotificationPermissionStatus();
 
@@ -189,6 +208,11 @@ export async function ensureAlarmPermissions(): Promise<EnsureAlarmPermissionsRe
   if (!(await canScheduleExactAlarms())) {
     await openExactAlarmSettings();
     return { granted: false, reason: 'exact_alarm_unavailable' };
+  }
+
+  if (!(await isIgnoringBatteryOptimizations())) {
+    await requestIgnoreBatteryOptimizations();
+    return { granted: false, reason: 'battery_optimization_enabled' };
   }
 
   return { granted: true };

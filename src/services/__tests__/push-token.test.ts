@@ -3,12 +3,11 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { PushTokenServiceError, registerPushToken } from '../push-token';
 
 const mocks = vi.hoisted(() => ({
-  from: vi.fn(),
   getExpoPushTokenAsync: vi.fn(),
   getPermissionsAsync: vi.fn(),
   getUser: vi.fn(),
   requestPermissionsAsync: vi.fn(),
-  upsert: vi.fn(),
+  rpc: vi.fn(),
 }));
 
 vi.mock('@/lib/supabase', () => ({
@@ -16,7 +15,7 @@ vi.mock('@/lib/supabase', () => ({
     auth: {
       getUser: mocks.getUser,
     },
-    from: mocks.from,
+    rpc: mocks.rpc,
   },
 }));
 
@@ -50,11 +49,10 @@ const provider = {
 describe('push token service', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mocks.from.mockReturnValue({ upsert: mocks.upsert });
-    mocks.upsert.mockResolvedValue({ error: null });
+    mocks.rpc.mockResolvedValue({ error: null });
   });
 
-  it('requests permission and upserts the token when already granted', async () => {
+  it('requests permission and registers the token when already granted', async () => {
     mockAuthenticatedUser();
     mocks.getPermissionsAsync.mockResolvedValue({ status: 'granted' });
     mocks.getExpoPushTokenAsync.mockResolvedValue({ data: 'expo-token-1' });
@@ -62,14 +60,12 @@ describe('push token service', () => {
     await expect(registerPushToken(provider)).resolves.toBe('registered');
 
     expect(mocks.requestPermissionsAsync).not.toHaveBeenCalled();
-    expect(mocks.from).toHaveBeenCalledWith('push_tokens');
-    expect(mocks.upsert).toHaveBeenCalledWith(
-      { profile_id: 'profile-a', token: 'expo-token-1' },
-      { onConflict: 'token' },
-    );
+    expect(mocks.rpc).toHaveBeenCalledWith('register_push_token', {
+      p_token: 'expo-token-1',
+    });
   });
 
-  it('requests permission when undetermined, then upserts on grant', async () => {
+  it('requests permission when undetermined, then registers on grant', async () => {
     mockAuthenticatedUser();
     mocks.getPermissionsAsync.mockResolvedValue({ status: 'undetermined' });
     mocks.requestPermissionsAsync.mockResolvedValue({ status: 'granted' });
@@ -78,10 +74,9 @@ describe('push token service', () => {
     await expect(registerPushToken(provider)).resolves.toBe('registered');
 
     expect(mocks.requestPermissionsAsync).toHaveBeenCalledTimes(1);
-    expect(mocks.upsert).toHaveBeenCalledWith(
-      { profile_id: 'profile-a', token: 'expo-token-2' },
-      { onConflict: 'token' },
-    );
+    expect(mocks.rpc).toHaveBeenCalledWith('register_push_token', {
+      p_token: 'expo-token-2',
+    });
   });
 
   it('skips without writing when the user denies permission', async () => {
@@ -92,7 +87,7 @@ describe('push token service', () => {
     await expect(registerPushToken(provider)).resolves.toBe('skipped');
 
     expect(mocks.getExpoPushTokenAsync).not.toHaveBeenCalled();
-    expect(mocks.from).not.toHaveBeenCalled();
+    expect(mocks.rpc).not.toHaveBeenCalled();
   });
 
   it('skips without re-prompting when already denied', async () => {
@@ -102,7 +97,7 @@ describe('push token service', () => {
     await expect(registerPushToken(provider)).resolves.toBe('skipped');
 
     expect(mocks.requestPermissionsAsync).not.toHaveBeenCalled();
-    expect(mocks.from).not.toHaveBeenCalled();
+    expect(mocks.rpc).not.toHaveBeenCalled();
   });
 
   it('requires authentication before requesting permission', async () => {
@@ -121,7 +116,7 @@ describe('push token service', () => {
     mockAuthenticatedUser();
     mocks.getPermissionsAsync.mockResolvedValue({ status: 'granted' });
     mocks.getExpoPushTokenAsync.mockResolvedValue({ data: 'expo-token-3' });
-    mocks.upsert.mockResolvedValue({ error: new Error('boom') });
+    mocks.rpc.mockResolvedValue({ error: new Error('boom') });
 
     await registerPushToken(provider).catch((error: unknown) => {
       expectServiceError(error, 'unexpected_error');

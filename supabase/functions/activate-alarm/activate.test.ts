@@ -13,7 +13,7 @@ function buildEntry(
 ): FailureLogEntryRow {
   return {
     activated_at: null,
-    created_at: '2026-08-25T00:00:00.000Z',
+    created_at: '2026-08-25T11:45:00.000Z',
     id: 'entry-1',
     profile_id: 'failed-profile',
     ...overrides,
@@ -46,25 +46,21 @@ describe('buildWakeFriendPushMessages', () => {
       buildWakeFriendPushMessages('entry-1', 'Alex', ['token-a', 'token-b']),
     ).toEqual([
       {
-        body: 'Alexがあなたのアラームを鳴らしました。',
         data: {
           activatedByDisplayName: 'Alex',
           failureEntryId: 'entry-1',
           type: 'wake-friend-activate',
         },
         priority: 'high',
-        title: '起こしてもらいました！',
         to: 'token-a',
       },
       {
-        body: 'Alexがあなたのアラームを鳴らしました。',
         data: {
           activatedByDisplayName: 'Alex',
           failureEntryId: 'entry-1',
           type: 'wake-friend-activate',
         },
         priority: 'high',
-        title: '起こしてもらいました！',
         to: 'token-b',
       },
     ]);
@@ -79,7 +75,7 @@ describe('activateWakeFriendAlarm', () => {
       activateWakeFriendAlarm('entry-1', 'requester', deps, NOW),
     ).resolves.toEqual({ notifiedTokenCount: 1, status: 'activated' });
 
-    expect(deps.markActivated).toHaveBeenCalledWith('entry-1', NOW);
+    expect(deps.markActivated).toHaveBeenCalledWith('failed-profile', NOW);
     expect(deps.sendPush).toHaveBeenCalledWith([
       expect.objectContaining({ to: 'ExponentPushToken[abc]' }),
     ]);
@@ -94,7 +90,7 @@ describe('activateWakeFriendAlarm', () => {
 
     expect(deps.sendPush).toHaveBeenCalledWith([
       expect.objectContaining({
-        body: '友達があなたのアラームを鳴らしました。',
+        data: expect.objectContaining({ activatedByDisplayName: '友達' }),
       }),
     ]);
   });
@@ -151,12 +147,12 @@ describe('activateWakeFriendAlarm', () => {
     expect(deps.markActivated).not.toHaveBeenCalled();
   });
 
-  it('throws entry_expired for an entry more than 24h old', async () => {
+  it('throws entry_expired for an entry more than 30 minutes old', async () => {
     const deps = buildDeps({
       getEntry: vi
         .fn()
         .mockResolvedValue(
-          buildEntry({ created_at: '2026-08-24T11:59:00.000Z' }),
+          buildEntry({ created_at: '2026-08-25T11:29:00.000Z' }),
         ),
     });
 
@@ -164,6 +160,20 @@ describe('activateWakeFriendAlarm', () => {
       activateWakeFriendAlarm('entry-1', 'requester', deps, NOW),
     ).rejects.toMatchObject({ code: 'entry_expired' });
     expect(deps.markActivated).not.toHaveBeenCalled();
+  });
+
+  it('allows an entry exactly at the 30 minute boundary', async () => {
+    const deps = buildDeps({
+      getEntry: vi
+        .fn()
+        .mockResolvedValue(
+          buildEntry({ created_at: '2026-08-25T11:30:00.000Z' }),
+        ),
+    });
+
+    await expect(
+      activateWakeFriendAlarm('entry-1', 'requester', deps, NOW),
+    ).resolves.toMatchObject({ status: 'activated' });
   });
 
   it('skips sending a push when the target has no registered tokens', async () => {

@@ -108,6 +108,7 @@ Deno.serve(async (request: Request) => {
       const { data, error } = await supabase
         .from('friends_relations')
         .select('profile_id, friend_profile_id')
+        .eq('status', 'accepted')
         .or(`profile_id.eq.${profileId},friend_profile_id.eq.${profileId}`);
 
       console.log(

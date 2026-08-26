@@ -8,6 +8,7 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
+import android.os.PowerManager
 import android.provider.Settings
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
@@ -17,7 +18,6 @@ import expo.modules.kotlin.Promise
 import expo.modules.kotlin.modules.Module
 import expo.modules.kotlin.modules.ModuleDefinition
 import java.time.Instant
-import java.util.UUID
 
 class AlarmRingingModule : Module() {
   override fun definition() = ModuleDefinition {
@@ -29,6 +29,14 @@ class AlarmRingingModule : Module() {
 
     AsyncFunction("openExactAlarmSettings") {
       openExactAlarmSettings()
+    }
+
+    AsyncFunction("isIgnoringBatteryOptimizations") {
+      isIgnoringBatteryOptimizations()
+    }
+
+    AsyncFunction("requestIgnoreBatteryOptimizations") {
+      requestIgnoreBatteryOptimizations()
     }
 
     AsyncFunction("getNotificationPermissionStatus") {
@@ -74,8 +82,7 @@ class AlarmRingingModule : Module() {
     get() = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
 
   private fun canScheduleExactAlarms(): Boolean {
-    return Build.VERSION.SDK_INT < Build.VERSION_CODES.S ||
-      alarmManager.canScheduleExactAlarms()
+    return AlarmScheduler.canScheduleExactAlarms(context)
   }
 
   private fun openExactAlarmSettings() {
@@ -84,6 +91,30 @@ class AlarmRingingModule : Module() {
     }
 
     val intent = Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM).apply {
+      data = Uri.parse("package:${context.packageName}")
+      addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+    }
+
+    context.startActivity(intent)
+  }
+
+  // A friend's wake-up push has to survive Doze mode to reach this device promptly --
+  // AlarmManager.setAlarmClock() (used below) is itself already Doze-exempt once the
+  // alarm is scheduled, but getting the FCM push delivered in the first place (see
+  // src/services/wake-friend-notifications.ts) is not, unless the app is excluded from
+  // battery optimization. Alarm clock apps are an explicitly permitted use of this
+  // permission under Google Play's Battery Optimization policy.
+  private fun isIgnoringBatteryOptimizations(): Boolean {
+    val powerManager = context.getSystemService(Context.POWER_SERVICE) as PowerManager
+    return powerManager.isIgnoringBatteryOptimizations(context.packageName)
+  }
+
+  private fun requestIgnoreBatteryOptimizations() {
+    if (isIgnoringBatteryOptimizations()) {
+      return
+    }
+
+    val intent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
       data = Uri.parse("package:${context.packageName}")
       addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
     }
@@ -157,28 +188,15 @@ class AlarmRingingModule : Module() {
       throw NotificationPermissionDeniedException()
     }
 
-    cancelScheduledTestAlarm()
-
-    val triggerAtMillis = System.currentTimeMillis() + (seconds * 1000L)
-    val scheduledFor = Instant.ofEpochMilli(triggerAtMillis).toString()
-    val alarmId = UUID.randomUUID().toString()
-
-    val pendingIntent = createTestAlarmPendingIntent(alarmId, scheduledFor, soundId)
-    val alarmClockInfo = AlarmManager.AlarmClockInfo(
-      triggerAtMillis,
-      createShowIntent(alarmId, scheduledFor),
-    )
-
-    alarmManager.setAlarmClock(alarmClockInfo, pendingIntent)
-
-    return mapOf(
-      "alarmId" to alarmId,
-      "scheduledFor" to scheduledFor,
-    )
+    // canScheduleExactAlarms() was already checked above (with its own exception on
+    // failure), and AlarmRingingState.isRinging() likewise -- AlarmScheduler re-checks
+    // both defensively, but neither should actually cause a null return here.
+    return AlarmScheduler.scheduleTestAlarmAfterSeconds(context, seconds, soundId)
+      ?: throw AlreadyRingingException()
   }
 
   private fun cancelScheduledTestAlarm() {
-    alarmManager.cancel(createTestAlarmPendingIntent(null, null, null))
+    AlarmScheduler.cancelScheduledTestAlarm(context)
   }
 
   private fun scheduleSavedAlarmOccurrence(

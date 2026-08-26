@@ -146,6 +146,7 @@ Deno.serve(async (request: Request) => {
           const { data, error } = await supabase
             .from('friends_relations')
             .select('profile_id, friend_profile_id')
+            .eq('status', 'accepted')
             .or(
               `and(profile_id.eq.${requesterId},friend_profile_id.eq.${targetId}),and(profile_id.eq.${targetId},friend_profile_id.eq.${requesterId})`,
             );
@@ -170,14 +171,15 @@ Deno.serve(async (request: Request) => {
 
           return data ?? [];
         },
-        markActivated: async (entryId, now): Promise<void> => {
+        markActivated: async (targetProfileId, now): Promise<void> => {
           const { error } = await supabase
             .from('failure_log_entries')
             .update({ activated_at: now.toISOString() })
-            .eq('id', entryId);
+            .eq('profile_id', targetProfileId)
+            .is('activated_at', null);
 
           if (error) {
-            throw new Error('Could not mark the entry activated.', {
+            throw new Error('Could not mark the entries activated.', {
               cause: error,
             });
           }

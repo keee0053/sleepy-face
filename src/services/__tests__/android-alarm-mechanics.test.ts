@@ -6,7 +6,9 @@ type MockNativeAndroidAlarmMechanicsModule = {
   canScheduleExactAlarms: ReturnType<typeof vi.fn>;
   getNotificationPermissionStatus: ReturnType<typeof vi.fn>;
   getRingingAlarmState: ReturnType<typeof vi.fn>;
+  isIgnoringBatteryOptimizations: ReturnType<typeof vi.fn>;
   openExactAlarmSettings: ReturnType<typeof vi.fn>;
+  requestIgnoreBatteryOptimizations: ReturnType<typeof vi.fn>;
   requestNotificationPermission: ReturnType<typeof vi.fn>;
   scheduleSavedAlarmOccurrence: ReturnType<typeof vi.fn>;
   scheduleTestAlarmAfterSeconds: ReturnType<typeof vi.fn>;
@@ -19,7 +21,9 @@ const nativeModule: MockNativeAndroidAlarmMechanicsModule = {
   canScheduleExactAlarms: vi.fn(),
   getNotificationPermissionStatus: vi.fn(),
   getRingingAlarmState: vi.fn(),
+  isIgnoringBatteryOptimizations: vi.fn(),
   openExactAlarmSettings: vi.fn(),
+  requestIgnoreBatteryOptimizations: vi.fn(),
   requestNotificationPermission: vi.fn(),
   scheduleSavedAlarmOccurrence: vi.fn(),
   scheduleTestAlarmAfterSeconds: vi.fn(),
@@ -233,12 +237,16 @@ describe('Android Alarm Mechanics service', () => {
 
     nativeModule.getNotificationPermissionStatus.mockResolvedValue('granted');
     nativeModule.canScheduleExactAlarms.mockResolvedValue(true);
+    nativeModule.isIgnoringBatteryOptimizations.mockResolvedValue(true);
 
     await expect(
       androidAlarmMechanics.ensureAlarmPermissions(),
     ).resolves.toEqual({ granted: true });
     expect(nativeModule.requestNotificationPermission).not.toHaveBeenCalled();
     expect(nativeModule.openExactAlarmSettings).not.toHaveBeenCalled();
+    expect(
+      nativeModule.requestIgnoreBatteryOptimizations,
+    ).not.toHaveBeenCalled();
   });
 
   it('requests notification permission when missing, then checks exact alarm access', async () => {
@@ -249,6 +257,7 @@ describe('Android Alarm Mechanics service', () => {
     );
     nativeModule.requestNotificationPermission.mockResolvedValue('granted');
     nativeModule.canScheduleExactAlarms.mockResolvedValue(true);
+    nativeModule.isIgnoringBatteryOptimizations.mockResolvedValue(true);
 
     await expect(
       androidAlarmMechanics.ensureAlarmPermissions(),
@@ -285,5 +294,24 @@ describe('Android Alarm Mechanics service', () => {
       reason: 'exact_alarm_unavailable',
     });
     expect(nativeModule.openExactAlarmSettings).toHaveBeenCalledTimes(1);
+  });
+
+  it('requests battery optimization exemption and reports battery_optimization_enabled when not yet ignoring', async () => {
+    const androidAlarmMechanics = await import('../android-alarm-mechanics');
+
+    nativeModule.getNotificationPermissionStatus.mockResolvedValue('granted');
+    nativeModule.canScheduleExactAlarms.mockResolvedValue(true);
+    nativeModule.isIgnoringBatteryOptimizations.mockResolvedValue(false);
+    nativeModule.requestIgnoreBatteryOptimizations.mockResolvedValue(undefined);
+
+    await expect(
+      androidAlarmMechanics.ensureAlarmPermissions(),
+    ).resolves.toEqual({
+      granted: false,
+      reason: 'battery_optimization_enabled',
+    });
+    expect(
+      nativeModule.requestIgnoreBatteryOptimizations,
+    ).toHaveBeenCalledTimes(1);
   });
 });

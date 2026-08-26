@@ -16,4 +16,9 @@ android {
 
 dependencies {
   implementation 'com.facebook.react:react-android'
+  // Subclassing ExpoFirebaseMessagingService (see WakeFriendFirebaseMessagingService.kt)
+  // to handle a wake-friend push natively -- entirely bypassing React Native/JS startup
+  // -- requires both of these directly, not just transitively through expo-notifications.
+  implementation 'host.exp.exponent:expo.modules.notifications:57.0.13'
+  implementation 'com.google.firebase:firebase-messaging:25.0.1'
 }
