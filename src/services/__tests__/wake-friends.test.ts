@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
   activateWakeFriendAlarm,
-  getAndClearPendingWakeFriendQuestionCount,
+  getAndClearPendingWakeFriendRingInfo,
   listWakeFriendTargets,
 } from '../wake-friends';
 
@@ -141,7 +141,7 @@ describe('activateWakeFriendAlarm', () => {
   });
 });
 
-describe('getAndClearPendingWakeFriendQuestionCount', () => {
+describe('getAndClearPendingWakeFriendRingInfo', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.getUser.mockResolvedValue({
@@ -154,35 +154,47 @@ describe('getAndClearPendingWakeFriendQuestionCount', () => {
     mocks.update.mockReturnValue({ eq: mocks.eq });
   });
 
-  it('returns and clears a pending question count', async () => {
+  it('returns and clears a pending question count and ringer name', async () => {
     mocks.maybeSingle.mockResolvedValue({
-      data: { pending_wake_friend_question_count: 12 },
+      data: {
+        pending_wake_friend_activated_by: '友達A',
+        pending_wake_friend_question_count: 12,
+      },
       error: null,
     });
 
-    await expect(getAndClearPendingWakeFriendQuestionCount()).resolves.toBe(12);
+    await expect(getAndClearPendingWakeFriendRingInfo()).resolves.toEqual({
+      activatedByDisplayName: '友達A',
+      questionCount: 12,
+    });
     expect(mocks.update).toHaveBeenCalledWith({
+      pending_wake_friend_activated_by: null,
       pending_wake_friend_question_count: null,
     });
   });
 
-  it('returns null when nothing is pending', async () => {
+  it('returns nulls when nothing is pending', async () => {
     mocks.maybeSingle.mockResolvedValue({
-      data: { pending_wake_friend_question_count: null },
+      data: {
+        pending_wake_friend_activated_by: null,
+        pending_wake_friend_question_count: null,
+      },
       error: null,
     });
 
-    await expect(
-      getAndClearPendingWakeFriendQuestionCount(),
-    ).resolves.toBeNull();
+    await expect(getAndClearPendingWakeFriendRingInfo()).resolves.toEqual({
+      activatedByDisplayName: null,
+      questionCount: null,
+    });
     expect(mocks.update).not.toHaveBeenCalled();
   });
 
-  it('returns null when there is no signed-in user', async () => {
+  it('returns nulls when there is no signed-in user', async () => {
     mocks.getUser.mockResolvedValue({ data: { user: null }, error: null });
 
-    await expect(
-      getAndClearPendingWakeFriendQuestionCount(),
-    ).resolves.toBeNull();
+    await expect(getAndClearPendingWakeFriendRingInfo()).resolves.toEqual({
+      activatedByDisplayName: null,
+      questionCount: null,
+    });
   });
 });

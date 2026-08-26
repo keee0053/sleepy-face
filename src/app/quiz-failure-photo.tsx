@@ -29,6 +29,7 @@ function getStatusCopy(status: UploadStatus, t: (key: string) => string) {
 export default function QuizFailurePhotoScreen() {
   const { t } = useTranslation();
   const params = useLocalSearchParams<{
+    activatedByDisplayName?: string;
     localPhotoUri?: string;
     requiredQuestionCount?: string;
   }>();
@@ -114,6 +115,13 @@ export default function QuizFailurePhotoScreen() {
             <Text style={challengeStyles.lightCaption}>
               {getStatusCopy(uploadStatus, t)}
             </Text>
+            {!!params.activatedByDisplayName && (
+              <Text style={styles.activatedBy}>
+                {t('quizFailurePhoto.activatedByLabel', {
+                  displayName: params.activatedByDisplayName,
+                })}
+              </Text>
+            )}
           </View>
 
           {!!params.localPhotoUri && (
@@ -146,6 +154,12 @@ export default function QuizFailurePhotoScreen() {
 }
 
 const styles = StyleSheet.create({
+  activatedBy: {
+    color: '#737373',
+    fontSize: 14,
+    fontWeight: '700',
+    textAlign: 'center',
+  },
   content: {
     flex: 1,
     gap: 32,

@@ -207,6 +207,23 @@ Deno.serve(async (request: Request) => {
             });
           }
         },
+        setPendingActivatedBy: async (
+          targetProfileId,
+          activatedByDisplayName,
+        ): Promise<void> => {
+          const { error } = await supabase
+            .from('profiles')
+            .update({
+              pending_wake_friend_activated_by: activatedByDisplayName,
+            })
+            .eq('id', targetProfileId);
+
+          if (error) {
+            throw new Error('Could not set the pending activated-by name.', {
+              cause: error,
+            });
+          }
+        },
         sendPush: sendExpoPush,
       },
       undefined,

@@ -44,6 +44,7 @@ function getFailureCopy(
 export default function QuizFailureScreen() {
   const { t } = useTranslation();
   const params = useLocalSearchParams<{
+    activatedByDisplayName?: string;
     reason?: string;
     requiredQuestionCount?: string;
   }>();
@@ -88,6 +89,13 @@ export default function QuizFailureScreen() {
             <Text style={challengeStyles.darkCaption}>
               {getFailureCopy(failureReason, t)}
             </Text>
+            {!!params.activatedByDisplayName && (
+              <Text style={styles.activatedBy}>
+                {t('quizFailure.activatedByLabel', {
+                  displayName: params.activatedByDisplayName,
+                })}
+              </Text>
+            )}
           </View>
 
           <ActionButton
@@ -102,6 +110,12 @@ export default function QuizFailureScreen() {
 }
 
 const styles = StyleSheet.create({
+  activatedBy: {
+    color: 'rgba(255, 255, 255, 0.6)',
+    fontSize: 14,
+    fontWeight: '700',
+    textAlign: 'center',
+  },
   content: {
     flex: 1,
     gap: 38,

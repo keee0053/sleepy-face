@@ -34,6 +34,7 @@ function buildDeps(
       .mockResolvedValue([{ token: 'ExponentPushToken[abc]' }]),
     markActivated: vi.fn().mockResolvedValue(undefined),
     setPendingQuestionCount: vi.fn().mockResolvedValue(undefined),
+    setPendingActivatedBy: vi.fn().mockResolvedValue(undefined),
     sendPush: vi.fn().mockResolvedValue(undefined),
     ...overrides,
   };
@@ -80,6 +81,10 @@ describe('activateWakeFriendAlarm', () => {
     expect(deps.setPendingQuestionCount).toHaveBeenCalledWith(
       'failed-profile',
       null,
+    );
+    expect(deps.setPendingActivatedBy).toHaveBeenCalledWith(
+      'failed-profile',
+      'Requester',
     );
     expect(deps.sendPush).toHaveBeenCalledWith([
       expect.objectContaining({ to: 'ExponentPushToken[abc]' }),

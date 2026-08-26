@@ -9,7 +9,10 @@ import { recordWakeAttemptOutcome } from '@/services/wake-status';
 
 export default function QuizSuccessScreen() {
   const { t } = useTranslation();
-  const params = useLocalSearchParams<{ requiredQuestionCount?: string }>();
+  const params = useLocalSearchParams<{
+    activatedByDisplayName?: string;
+    requiredQuestionCount?: string;
+  }>();
 
   useEffect(() => {
     // Read (via recordWakeAttemptOutcome) before clearing -- clearWakeChallengeAttempt
@@ -40,6 +43,13 @@ export default function QuizSuccessScreen() {
             <Text style={challengeStyles.lightCaption}>
               {t('quizSuccess.caption')}
             </Text>
+            {!!params.activatedByDisplayName && (
+              <Text style={styles.activatedBy}>
+                {t('quizSuccess.activatedByLabel', {
+                  displayName: params.activatedByDisplayName,
+                })}
+              </Text>
+            )}
           </View>
 
           <ActionButton
@@ -53,6 +63,12 @@ export default function QuizSuccessScreen() {
 }
 
 const styles = StyleSheet.create({
+  activatedBy: {
+    color: '#737373',
+    fontSize: 14,
+    fontWeight: '700',
+    textAlign: 'center',
+  },
   content: {
     flex: 1,
     justifyContent: 'center',

@@ -76,36 +76,57 @@ export async function logWakeChallengeFailure(): Promise<void> {
     .insert({ profile_id: userData.user.id });
 }
 
-// Reads (and clears) the question count the Friend who rang this device's alarm chose,
-// stashed on this Profile's own row by activate-alarm since the Wake Friend ring path
-// has no Saved Alarm for the quiz screen to read a questionCount from otherwise (see
-// resolveRequiredCorrectAnswerCount in quiz.tsx). Single-use: cleared immediately so a
-// later dev/test alarm ring doesn't pick up a stale value.
-export async function getAndClearPendingWakeFriendQuestionCount(): Promise<
-  number | null
-> {
+export type PendingWakeFriendRingInfo = {
+  questionCount: number | null;
+  activatedByDisplayName: string | null;
+};
+
+// Reads (and clears) the question count and ringer name the Friend who rang this
+// device's alarm chose/left, stashed on this Profile's own row by activate-alarm since
+// the Wake Friend ring path has no Saved Alarm for the quiz screens to read them from
+// otherwise (see resolveQuizStartInfo in quiz.tsx, and the outcome screens that show who
+// rang the alarm). Single-use: cleared immediately so a later dev/test
+// alarm ring doesn't pick up stale values.
+export async function getAndClearPendingWakeFriendRingInfo(): Promise<PendingWakeFriendRingInfo> {
+  const empty: PendingWakeFriendRingInfo = {
+    activatedByDisplayName: null,
+    questionCount: null,
+  };
+
   const { data: userData, error: userError } = await supabase.auth.getUser();
 
   if (userError || !userData.user) {
-    return null;
+    return empty;
   }
 
   const { data, error } = await supabase
     .from('profiles')
-    .select('pending_wake_friend_question_count')
+    .select(
+      'pending_wake_friend_question_count, pending_wake_friend_activated_by',
+    )
     .eq('id', userData.user.id)
     .maybeSingle();
 
-  if (error || !data?.pending_wake_friend_question_count) {
-    return null;
+  if (
+    error ||
+    (!data?.pending_wake_friend_question_count &&
+      !data?.pending_wake_friend_activated_by)
+  ) {
+    return empty;
   }
 
   await supabase
     .from('profiles')
-    .update({ pending_wake_friend_question_count: null })
+    .update({
+      pending_wake_friend_activated_by: null,
+      pending_wake_friend_question_count: null,
+    })
     .eq('id', userData.user.id);
 
-  return data.pending_wake_friend_question_count;
+  return {
+    activatedByDisplayName: data.pending_wake_friend_activated_by,
+    questionCount: data.pending_wake_friend_question_count,
+  };
 }
 
 export async function activateWakeFriendAlarm(

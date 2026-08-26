@@ -296,6 +296,7 @@
     "timeRemaining": "あと {{time}}"
   },
   "quizFailure": {
+    "activatedByLabel": "{{displayName}}さんに起こしてもらいました",
     "backToAlarmButton": "アラームへ戻る",
     "reasons": {
       "appQuit": "チャレンジの途中でアプリが終了しました。今日はフィードを見られません。",
@@ -305,6 +306,7 @@
     "title": "起床失敗"
   },
   "quizFailurePhoto": {
+    "activatedByLabel": "{{displayName}}さんに起こしてもらいました",
     "backToAlarmButton": "アラームへ戻る",
     "feedButton": "フィードへ進む",
     "status": {
@@ -316,6 +318,7 @@
     "uploadingPhoto": "写真を送信中"
   },
   "quizSuccess": {
+    "activatedByLabel": "{{displayName}}さんに起こしてもらいました",
     "caption": "写真とクイズを完了しました",
     "homeButton": "ホームへ",
     "title": "起床成功"

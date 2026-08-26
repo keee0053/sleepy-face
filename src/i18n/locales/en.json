@@ -296,6 +296,7 @@
     "timeRemaining": "{{time}} left"
   },
   "quizFailure": {
+    "activatedByLabel": "{{displayName}} woke you up",
     "backToAlarmButton": "Back to Alarm",
     "reasons": {
       "appQuit": "The app was closed mid-challenge. You can't view the feed today.",
@@ -305,6 +306,7 @@
     "title": "Wake-Up Failed"
   },
   "quizFailurePhoto": {
+    "activatedByLabel": "{{displayName}} woke you up",
     "backToAlarmButton": "Back to Alarm",
     "feedButton": "Go to Feed",
     "status": {
@@ -316,6 +318,7 @@
     "uploadingPhoto": "Sending photo"
   },
   "quizSuccess": {
+    "activatedByLabel": "{{displayName}} woke you up",
     "caption": "You completed the photo and quiz",
     "homeButton": "Go Home",
     "title": "Wake-Up Success"

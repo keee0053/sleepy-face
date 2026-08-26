@@ -19,7 +19,7 @@ import {
 import { getRingingAlarmState } from '@/services/android-alarm-mechanics';
 import { getDevMode } from '@/services/dev-mode';
 import { getDevQuizQuestionCount } from '@/services/dev-quiz-settings';
-import { getAndClearPendingWakeFriendQuestionCount } from '@/services/wake-friends';
+import { getAndClearPendingWakeFriendRingInfo } from '@/services/wake-friends';
 import {
   QuizServiceError,
   startQuiz,
@@ -73,24 +73,36 @@ function getErrorMessage(error: unknown, t: (key: string) => string) {
   return t('quiz.errors.processingFailed');
 }
 
-async function resolveRequiredCorrectAnswerCount(
-  alarmId?: string,
-): Promise<number> {
+type QuizStartInfo = {
+  requiredCorrectAnswerCount: number;
+  activatedByDisplayName: string | null;
+};
+
+async function resolveQuizStartInfo(alarmId?: string): Promise<QuizStartInfo> {
   if (alarmId) {
     const savedAlarm = await getSavedAlarm(alarmId).catch(() => null);
 
     if (savedAlarm) {
-      return savedAlarm.questionCount;
+      return {
+        activatedByDisplayName: null,
+        requiredCorrectAnswerCount: savedAlarm.questionCount,
+      };
     }
   }
 
   // No matching Saved Alarm -- this is either a Wake Friend ring (check for a
-  // question count the ringing Friend chose) or a dev/test alarm ring (fall back to
-  // the dev-configurable question count so testing can exercise any difficulty too).
-  const pendingWakeFriendQuestionCount =
-    await getAndClearPendingWakeFriendQuestionCount().catch(() => null);
+  // question count and ringer name the ringing Friend left) or a dev/test alarm ring
+  // (fall back to the dev-configurable question count so testing can exercise any
+  // difficulty too).
+  const pendingRingInfo = await getAndClearPendingWakeFriendRingInfo().catch(
+    () => ({ activatedByDisplayName: null, questionCount: null }),
+  );
 
-  return pendingWakeFriendQuestionCount ?? (await getDevQuizQuestionCount());
+  return {
+    activatedByDisplayName: pendingRingInfo.activatedByDisplayName,
+    requiredCorrectAnswerCount:
+      pendingRingInfo.questionCount ?? (await getDevQuizQuestionCount()),
+  };
 }
 
 export default function QuizScreen() {
@@ -105,6 +117,9 @@ export default function QuizScreen() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDevMode, setIsDevMode] = useState(false);
+  const [activatedByDisplayName, setActivatedByDisplayName] = useState<
+    string | null
+  >(null);
   const didHandleExpiry = useRef(false);
 
   useEffect(() => {
@@ -167,9 +182,10 @@ export default function QuizScreen() {
   useEffect(() => {
     let isActive = true;
 
-    resolveRequiredCorrectAnswerCount(params.alarmId).then(
-      (requiredCorrectAnswerCount) => {
+    resolveQuizStartInfo(params.alarmId).then(
+      ({ activatedByDisplayName: ringerName, requiredCorrectAnswerCount }) => {
         if (isActive) {
+          setActivatedByDisplayName(ringerName);
           setQuizState(startQuiz({ requiredCorrectAnswerCount }));
         }
       },
@@ -210,10 +226,11 @@ export default function QuizScreen() {
                 ),
               }
             : {}),
+          ...(activatedByDisplayName ? { activatedByDisplayName } : {}),
         },
       });
     },
-    [quizState],
+    [activatedByDisplayName, quizState],
   );
 
   const routeToPhotoFailure = useCallback(
@@ -229,10 +246,11 @@ export default function QuizScreen() {
                 ),
               }
             : {}),
+          ...(activatedByDisplayName ? { activatedByDisplayName } : {}),
         },
       });
     },
-    [quizState],
+    [activatedByDisplayName, quizState],
   );
 
   useEffect(() => {
@@ -277,6 +295,7 @@ export default function QuizScreen() {
         router.replace({
           params: {
             requiredQuestionCount: String(nextState.requiredCorrectAnswerCount),
+            ...(activatedByDisplayName ? { activatedByDisplayName } : {}),
           },
           pathname: '/quiz-success',
         });

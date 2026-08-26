@@ -74,6 +74,10 @@ export type ActivateWakeFriendAlarmDeps = {
     targetProfileId: string,
     questionCount: number | null,
   ): Promise<void>;
+  setPendingActivatedBy(
+    targetProfileId: string,
+    activatedByDisplayName: string,
+  ): Promise<void>;
   listPushTokens(profileId: string): Promise<PushTokenRow[]>;
   sendPush(messages: PushMessage[]): Promise<void>;
 };
@@ -166,11 +170,13 @@ export async function activateWakeFriendAlarm(
     );
   }
 
-  await deps.markActivated(entry.profile_id, now);
-  await deps.setPendingQuestionCount(entry.profile_id, questionCount);
-
   const requesterProfile = await deps.getRequesterProfile(requesterProfileId);
   const activatedByDisplayName = requesterProfile?.display_name ?? '友達';
+
+  await deps.markActivated(entry.profile_id, now);
+  await deps.setPendingQuestionCount(entry.profile_id, questionCount);
+  await deps.setPendingActivatedBy(entry.profile_id, activatedByDisplayName);
+
   const tokenRows = await deps.listPushTokens(entry.profile_id);
   const messages = buildWakeFriendPushMessages(
     entryId,
