@@ -12,6 +12,7 @@ import { createClient } from 'jsr:@supabase/supabase-js@2';
 import {
   ActivateWakeFriendAlarmError,
   activateWakeFriendAlarm,
+  isValidQuestionCount,
   type FailureLogEntryRow,
   type FriendRelationRow,
   type PushMessage,
@@ -23,13 +24,20 @@ const EXPO_PUSH_URL = 'https://exp.host/--/api/v2/push/send';
 
 type ActivateRequestBody = {
   entryId: string;
+  questionCount?: number;
 };
 
 function isActivateRequestBody(value: unknown): value is ActivateRequestBody {
+  if (typeof value !== 'object' || value === null) {
+    return false;
+  }
+
+  const body = value as { entryId?: unknown; questionCount?: unknown };
+
   return (
-    typeof value === 'object' &&
-    value !== null &&
-    typeof (value as { entryId?: unknown }).entryId === 'string'
+    typeof body.entryId === 'string' &&
+    (body.questionCount === undefined ||
+      isValidQuestionCount(body.questionCount))
   );
 }
 
@@ -184,8 +192,25 @@ Deno.serve(async (request: Request) => {
             });
           }
         },
+        setPendingQuestionCount: async (
+          targetProfileId,
+          questionCount,
+        ): Promise<void> => {
+          const { error } = await supabase
+            .from('profiles')
+            .update({ pending_wake_friend_question_count: questionCount })
+            .eq('id', targetProfileId);
+
+          if (error) {
+            throw new Error('Could not set the pending question count.', {
+              cause: error,
+            });
+          }
+        },
         sendPush: sendExpoPush,
       },
+      undefined,
+      payload.questionCount ?? null,
     );
 
     return new Response(JSON.stringify(result), {

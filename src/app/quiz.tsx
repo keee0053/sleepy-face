@@ -1,15 +1,25 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { LoadingState } from '@/components/loading';
 import {
   ActionButton,
   formatRemainingTime,
   getRemainingMs,
 } from '@/components/wake-challenge-ui';
-import { resumeTimer, useAlarmTimer } from '@/services/alarm-timer';
+import { getSavedAlarm } from '@/services/alarm';
+import {
+  getAlarmTimerState,
+  resumeTimer,
+  useAlarmTimer,
+} from '@/services/alarm-timer';
+import { getRingingAlarmState } from '@/services/android-alarm-mechanics';
 import { getDevMode } from '@/services/dev-mode';
+import { getDevQuizQuestionCount } from '@/services/dev-quiz-settings';
+import { getAndClearPendingWakeFriendQuestionCount } from '@/services/wake-friends';
 import {
   QuizServiceError,
   startQuiz,
@@ -51,7 +61,7 @@ function getKeypadKeyLabel(key: QuizKeypadKey): string {
   return key;
 }
 
-function getErrorMessage(error: unknown) {
+function getErrorMessage(error: unknown, t: (key: string) => string) {
   if (error instanceof QuizServiceError) {
     return error.message;
   }
@@ -60,15 +70,37 @@ function getErrorMessage(error: unknown) {
     return error.message;
   }
 
-  return 'クイズの処理に失敗しました。';
+  return t('quiz.errors.processingFailed');
+}
+
+async function resolveRequiredCorrectAnswerCount(
+  alarmId?: string,
+): Promise<number> {
+  if (alarmId) {
+    const savedAlarm = await getSavedAlarm(alarmId).catch(() => null);
+
+    if (savedAlarm) {
+      return savedAlarm.questionCount;
+    }
+  }
+
+  // No matching Saved Alarm -- this is either a Wake Friend ring (check for a
+  // question count the ringing Friend chose) or a dev/test alarm ring (fall back to
+  // the dev-configurable question count so testing can exercise any difficulty too).
+  const pendingWakeFriendQuestionCount =
+    await getAndClearPendingWakeFriendQuestionCount().catch(() => null);
+
+  return pendingWakeFriendQuestionCount ?? (await getDevQuizQuestionCount());
 }
 
 export default function QuizScreen() {
   const params = useLocalSearchParams<{
+    alarmId?: string;
     localPhotoUri?: string;
   }>();
+  const { t } = useTranslation();
   const timer = useAlarmTimer();
-  const [quizState, setQuizState] = useState<QuizState>(() => startQuiz());
+  const [quizState, setQuizState] = useState<QuizState | null>(null);
   const [answerText, setAnswerText] = useState('');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -77,6 +109,78 @@ export default function QuizScreen() {
 
   useEffect(() => {
     resumeTimer();
+  }, []);
+
+  useEffect(() => {
+    let isActive = true;
+
+    async function checkForActiveTimerOrRingingAlarm() {
+      const currentStatus = getAlarmTimerState()?.status;
+
+      if (currentStatus === 'running' || currentStatus === 'paused') {
+        return;
+      }
+
+      // Quiz has no authoritative Alarm start time of its own -- it always relies on
+      // Ringing/Face Check having already started (or resumed) the timer before
+      // navigating here. If this screen is instead entered directly (e.g. a dev JS
+      // reload restoring straight to this route), the JS timer alone can't be trusted.
+      // Ask the native side whether an Alarm is genuinely still ringing (it can be out
+      // of sync with the JS timer) before deciding where to go: if it errors, treat that
+      // as "unknown" and stay on the safe side rather than risk stranding a genuinely
+      // ringing Alarm with no way to stop it.
+      const isAlarmActuallyRinging = await getRingingAlarmState()
+        .then((state) => state !== null)
+        .catch(() => true);
+
+      if (!isActive) {
+        return;
+      }
+
+      if (!isAlarmActuallyRinging) {
+        router.replace('/home');
+        return;
+      }
+
+      router.replace({
+        pathname: '/ringing',
+        params: { alarmId: params.alarmId ?? '' },
+      });
+    }
+
+    // Deferred a tick, same as Ringing's own refreshRingingState effect: navigating from
+    // an effect that can resolve on the very first tick after mount can otherwise fire
+    // before React has fully committed this screen, which triggers a "state update on a
+    // component that hasn't mounted yet" warning.
+    const timeout = setTimeout(() => {
+      checkForActiveTimerOrRingingAlarm();
+    }, 0);
+
+    return () => {
+      isActive = false;
+      clearTimeout(timeout);
+    };
+    // Mount-only sanity check for how this screen was entered.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    let isActive = true;
+
+    resolveRequiredCorrectAnswerCount(params.alarmId).then(
+      (requiredCorrectAnswerCount) => {
+        if (isActive) {
+          setQuizState(startQuiz({ requiredCorrectAnswerCount }));
+        }
+      },
+    );
+
+    return () => {
+      isActive = false;
+    };
+    // Only resolved once per mount: the alarmId a Quiz screen is entered with never
+    // changes while it stays mounted.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -93,19 +197,43 @@ export default function QuizScreen() {
     };
   }, []);
 
-  const routeToFailure = useCallback((reason: WakeChallengeFailureReason) => {
-    router.replace({
-      pathname: '/quiz-failure',
-      params: { reason },
-    });
-  }, []);
+  const routeToFailure = useCallback(
+    (reason: WakeChallengeFailureReason) => {
+      router.replace({
+        pathname: '/quiz-failure',
+        params: {
+          reason,
+          ...(quizState
+            ? {
+                requiredQuestionCount: String(
+                  quizState.requiredCorrectAnswerCount,
+                ),
+              }
+            : {}),
+        },
+      });
+    },
+    [quizState],
+  );
 
-  const routeToPhotoFailure = useCallback((localPhotoUri: string) => {
-    router.replace({
-      pathname: '/quiz-failure-photo',
-      params: { localPhotoUri },
-    });
-  }, []);
+  const routeToPhotoFailure = useCallback(
+    (localPhotoUri: string) => {
+      router.replace({
+        pathname: '/quiz-failure-photo',
+        params: {
+          localPhotoUri,
+          ...(quizState
+            ? {
+                requiredQuestionCount: String(
+                  quizState.requiredCorrectAnswerCount,
+                ),
+              }
+            : {}),
+        },
+      });
+    },
+    [quizState],
+  );
 
   useEffect(() => {
     if (timer?.status !== 'expired' || didHandleExpiry.current) {
@@ -133,7 +261,7 @@ export default function QuizScreen() {
   }
 
   function handleSubmitAnswer() {
-    if (isSubmitting || timer?.status === 'expired') {
+    if (!quizState || isSubmitting || timer?.status === 'expired') {
       return;
     }
 
@@ -146,14 +274,27 @@ export default function QuizScreen() {
       setAnswerText('');
 
       if (nextState.status === 'completed') {
-        router.replace('/quiz-success');
+        router.replace({
+          params: {
+            requiredQuestionCount: String(nextState.requiredCorrectAnswerCount),
+          },
+          pathname: '/quiz-success',
+        });
         return;
       }
     } catch (error) {
-      setErrorMessage(getErrorMessage(error));
+      setErrorMessage(getErrorMessage(error, t));
     } finally {
       setIsSubmitting(false);
     }
+  }
+
+  if (!quizState) {
+    return (
+      <SafeAreaView edges={['top', 'bottom']} style={styles.screen}>
+        <LoadingState message={t('quiz.preparing')} variant="screen" />
+      </SafeAreaView>
+    );
   }
 
   const isActive = quizState.status === 'active';
@@ -173,7 +314,7 @@ export default function QuizScreen() {
                 isTimeRunningLow && styles.timerPillTextWarning,
               ]}
             >
-              あと {formatRemainingTime(timer)}
+              {t('quiz.timeRemaining', { time: formatRemainingTime(timer) })}
             </Text>
           </View>
 
@@ -190,7 +331,9 @@ export default function QuizScreen() {
                   : styles.incorrectCue
               }
             >
-              {quizState.lastAnswerCorrect ? '正解!' : '不正解'}
+              {quizState.lastAnswerCorrect
+                ? t('quiz.correct')
+                : t('quiz.incorrect')}
             </Text>
           )}
 
@@ -198,9 +341,20 @@ export default function QuizScreen() {
             <View style={styles.debugButtonRow}>
               <Pressable
                 accessibilityRole="button"
-                onPress={() => router.replace('/quiz-success')}
+                onPress={() =>
+                  router.replace({
+                    params: {
+                      requiredQuestionCount: String(
+                        quizState.requiredCorrectAnswerCount,
+                      ),
+                    },
+                    pathname: '/quiz-success',
+                  })
+                }
               >
-                <Text style={styles.debugToggleText}>[DEV] 成功</Text>
+                <Text style={styles.debugToggleText}>
+                  {t('quiz.dev.success')}
+                </Text>
               </Pressable>
 
               <Pressable
@@ -214,7 +368,9 @@ export default function QuizScreen() {
                   routeToFailure('bad-photo-limit');
                 }}
               >
-                <Text style={styles.debugToggleText}>[DEV] 失敗</Text>
+                <Text style={styles.debugToggleText}>
+                  {t('quiz.dev.failure')}
+                </Text>
               </Pressable>
             </View>
           )}
@@ -223,7 +379,7 @@ export default function QuizScreen() {
         <View style={styles.content}>
           <View style={styles.questionGroup}>
             <Text style={styles.prompt}>
-              {isActive ? quizState.question.prompt : 'CLEAR'}
+              {isActive ? quizState.question.prompt : t('quiz.clear')}
             </Text>
 
             <View style={styles.answerBox}>
@@ -233,7 +389,7 @@ export default function QuizScreen() {
                     answerText ? styles.inputText : styles.inputPlaceholder
                   }
                 >
-                  {answerText || '?'}
+                  {answerText || t('quiz.answerPlaceholder')}
                 </Text>
               </View>
               <View style={styles.answerBoxUnderline} />
@@ -259,7 +415,7 @@ export default function QuizScreen() {
 
             <ActionButton
               disabled={!answerText.trim()}
-              label="回答する"
+              label={t('quiz.submit')}
               loading={isSubmitting}
               onPress={handleSubmitAnswer}
             />

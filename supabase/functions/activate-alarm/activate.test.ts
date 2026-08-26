@@ -33,6 +33,7 @@ function buildDeps(
       .fn()
       .mockResolvedValue([{ token: 'ExponentPushToken[abc]' }]),
     markActivated: vi.fn().mockResolvedValue(undefined),
+    setPendingQuestionCount: vi.fn().mockResolvedValue(undefined),
     sendPush: vi.fn().mockResolvedValue(undefined),
     ...overrides,
   };
@@ -76,9 +77,24 @@ describe('activateWakeFriendAlarm', () => {
     ).resolves.toEqual({ notifiedTokenCount: 1, status: 'activated' });
 
     expect(deps.markActivated).toHaveBeenCalledWith('failed-profile', NOW);
+    expect(deps.setPendingQuestionCount).toHaveBeenCalledWith(
+      'failed-profile',
+      null,
+    );
     expect(deps.sendPush).toHaveBeenCalledWith([
       expect.objectContaining({ to: 'ExponentPushToken[abc]' }),
     ]);
+  });
+
+  it('stores the requested question count for the target to pick up', async () => {
+    const deps = buildDeps();
+
+    await activateWakeFriendAlarm('entry-1', 'requester', deps, NOW, 12);
+
+    expect(deps.setPendingQuestionCount).toHaveBeenCalledWith(
+      'failed-profile',
+      12,
+    );
   });
 
   it('falls back to a generic display name when the requester profile is missing', async () => {

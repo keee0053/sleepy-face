@@ -2,6 +2,7 @@ import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { SymbolView } from 'expo-symbols';
 import { useCallback, useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   ActivityIndicator,
   FlatList,
@@ -14,18 +15,21 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { FriendListLoadingSkeleton } from '@/components/loading-skeletons';
+import { QuestionCountStepper } from '@/components/question-count-stepper';
 import { PROFILE_ICON_SOURCES } from '@/constants/profile-icons';
+import { DEFAULT_QUIZ_QUESTION_COUNT } from '@/services/alarm';
 import {
   activateWakeFriendAlarm,
   listWakeFriendTargets,
   type WakeFriendTarget,
 } from '@/services/wake-friends';
 
-function getLoadErrorMessage(): string {
-  return '起こせる友達を読み込めませんでした。もう一度お試しください。';
+function getLoadErrorMessage(t: (key: string) => string): string {
+  return t('wakeFriends.errors.loadFailed');
 }
 
 export default function WakeFriendsScreen() {
+  const { t } = useTranslation();
   const [targets, setTargets] = useState<WakeFriendTarget[]>([]);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
@@ -33,6 +37,9 @@ export default function WakeFriendsScreen() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [activatingProfileId, setActivatingProfileId] = useState<string | null>(
     null,
+  );
+  const [questionCount, setQuestionCount] = useState(
+    DEFAULT_QUIZ_QUESTION_COUNT,
   );
 
   const loadTargets = useCallback(async () => {
@@ -50,7 +57,7 @@ export default function WakeFriendsScreen() {
       })
       .catch(() => {
         if (isActive) {
-          setErrorMessage(getLoadErrorMessage());
+          setErrorMessage(getLoadErrorMessage(t));
         }
       })
       .finally(() => {
@@ -62,7 +69,7 @@ export default function WakeFriendsScreen() {
     return () => {
       isActive = false;
     };
-  }, []);
+  }, [t]);
 
   const handleRefresh = useCallback(async () => {
     setErrorMessage(null);
@@ -72,33 +79,42 @@ export default function WakeFriendsScreen() {
     try {
       await loadTargets();
     } catch {
-      setErrorMessage(getLoadErrorMessage());
+      setErrorMessage(getLoadErrorMessage(t));
     } finally {
       setIsRefreshing(false);
     }
-  }, [loadTargets]);
+  }, [loadTargets, t]);
 
-  const handleActivateAlarm = useCallback(async (target: WakeFriendTarget) => {
-    setActivatingProfileId(target.id);
-    setErrorMessage(null);
-    setSuccessMessage(null);
+  const handleActivateAlarm = useCallback(
+    async (target: WakeFriendTarget) => {
+      setActivatingProfileId(target.id);
+      setErrorMessage(null);
+      setSuccessMessage(null);
 
-    try {
-      await activateWakeFriendAlarm(target.failureEntryId);
-      setTargets((currentTargets) =>
-        currentTargets.filter(
-          (currentTarget) => currentTarget.id !== target.id,
-        ),
-      );
-      setSuccessMessage(`${target.displayName}さんにアラームを送信しました。`);
-    } catch {
-      setErrorMessage(
-        `${target.displayName}さんにアラームを送信できませんでした。`,
-      );
-    } finally {
-      setActivatingProfileId(null);
-    }
-  }, []);
+      try {
+        await activateWakeFriendAlarm(target.failureEntryId, questionCount);
+        setTargets((currentTargets) =>
+          currentTargets.filter(
+            (currentTarget) => currentTarget.id !== target.id,
+          ),
+        );
+        setSuccessMessage(
+          t('wakeFriends.alarmSentSuccess', {
+            displayName: target.displayName,
+          }),
+        );
+      } catch {
+        setErrorMessage(
+          t('wakeFriends.alarmSentError', {
+            displayName: target.displayName,
+          }),
+        );
+      } finally {
+        setActivatingProfileId(null);
+      }
+    },
+    [questionCount, t],
+  );
 
   const renderItem: ListRenderItem<WakeFriendTarget> = ({ item }) => {
     const isActivating = activatingProfileId === item.id;
@@ -118,12 +134,16 @@ export default function WakeFriendsScreen() {
           <View style={styles.profileText}>
             <Text style={styles.displayName}>{item.displayName}</Text>
             <Text style={styles.userId}>@{item.userId}</Text>
-            <Text style={styles.failureStatus}>起床失敗中</Text>
+            <Text style={styles.failureStatus}>
+              {t('wakeFriends.failureStatus')}
+            </Text>
           </View>
         </View>
 
         <Pressable
-          accessibilityLabel={`${item.displayName}さんにアラームを鳴らす`}
+          accessibilityLabel={t('wakeFriends.ringAlarmAccessibilityLabel', {
+            displayName: item.displayName,
+          })}
           accessibilityRole="button"
           accessibilityState={{ disabled: isDisabled }}
           disabled={isDisabled}
@@ -145,7 +165,9 @@ export default function WakeFriendsScreen() {
             />
           )}
           <Text style={styles.alarmButtonText}>
-            {isActivating ? '送信中' : '鳴らす'}
+            {isActivating
+              ? t('wakeFriends.sending')
+              : t('wakeFriends.ringButton')}
           </Text>
         </Pressable>
       </View>
@@ -157,7 +179,7 @@ export default function WakeFriendsScreen() {
       <View style={styles.screen}>
         <View style={styles.header}>
           <Pressable
-            accessibilityLabel="ホームに戻る"
+            accessibilityLabel={t('wakeFriends.backToHomeAccessibilityLabel')}
             accessibilityRole="button"
             hitSlop={12}
             onPress={() => router.replace('/home')}
@@ -170,13 +192,22 @@ export default function WakeFriendsScreen() {
               type="monochrome"
             />
           </Pressable>
-          <Text style={styles.title}>友達を起こす</Text>
+          <Text style={styles.title}>{t('wakeFriends.title')}</Text>
         </View>
 
         <View style={styles.content}>
-          <Text style={styles.description}>
-            起床に失敗した友達にアラームを鳴らせます。
-          </Text>
+          <Text style={styles.description}>{t('wakeFriends.description')}</Text>
+
+          <View style={styles.questionCountBox}>
+            <Text style={styles.questionCountLabel}>
+              {t('wakeFriends.questionCountLabel')}
+            </Text>
+            <QuestionCountStepper
+              disabled={activatingProfileId !== null}
+              onChange={setQuestionCount}
+              value={questionCount}
+            />
+          </View>
 
           {errorMessage && (
             <Text accessibilityLiveRegion="polite" style={styles.errorText}>
@@ -211,10 +242,10 @@ export default function WakeFriendsScreen() {
                     />
                   </View>
                   <Text style={styles.emptyTitle}>
-                    今起こせる友達はいません
+                    {t('wakeFriends.emptyTitle')}
                   </Text>
                   <Text style={styles.emptyText}>
-                    起床に失敗した友達がいるとここに表示されます。
+                    {t('wakeFriends.emptyText')}
                   </Text>
                 </View>
               }
@@ -275,6 +306,23 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 22,
     marginBottom: 14,
+  },
+  questionCountBox: {
+    alignItems: 'center',
+    backgroundColor: '#fafafa',
+    borderColor: '#f1f1f1',
+    borderRadius: 16,
+    borderWidth: 1,
+    gap: 10,
+    marginBottom: 14,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+  },
+  questionCountLabel: {
+    color: '#171717',
+    fontFamily: 'NotoSansJP_700Bold',
+    fontSize: 14,
+    fontWeight: '700',
   },
   errorText: {
     color: '#b42318',

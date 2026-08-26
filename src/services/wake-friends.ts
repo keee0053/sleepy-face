@@ -10,16 +10,17 @@ type FailureLogEntryRow = {
   profile_id: string;
 };
 
-function startOfLocalDayIso(now: Date): string {
-  return new Date(
-    now.getFullYear(),
-    now.getMonth(),
-    now.getDate(),
-  ).toISOString();
+// Kept in sync with ENTRY_VALIDITY_WINDOW_MS in
+// supabase/functions/activate-alarm/activate.ts, which is the actual server-side source
+// of truth -- this is only for what the list shows, not what activate-alarm will accept.
+const ENTRY_VALIDITY_WINDOW_MS = 30 * 60 * 1000;
+
+function entryValidityWindowStartIso(now: Date): string {
+  return new Date(now.getTime() - ENTRY_VALIDITY_WINDOW_MS).toISOString();
 }
 
-// Joins the existing friend list with today's unconsumed Failure Log Entries so
-// screens only receive Friends whose remote alarm can currently be activated.
+// Joins the existing friend list with unconsumed Failure Log Entries from the last 30
+// minutes so screens only receive Friends whose remote alarm can currently be activated.
 export async function listWakeFriendTargets(
   now: Date = new Date(),
 ): Promise<WakeFriendTarget[]> {
@@ -37,7 +38,7 @@ export async function listWakeFriendTargets(
       friends.map((friend) => friend.id),
     )
     .is('activated_at', null)
-    .gte('created_at', startOfLocalDayIso(now));
+    .gte('created_at', entryValidityWindowStartIso(now));
 
   if (error) {
     throw error;
@@ -75,11 +76,44 @@ export async function logWakeChallengeFailure(): Promise<void> {
     .insert({ profile_id: userData.user.id });
 }
 
+// Reads (and clears) the question count the Friend who rang this device's alarm chose,
+// stashed on this Profile's own row by activate-alarm since the Wake Friend ring path
+// has no Saved Alarm for the quiz screen to read a questionCount from otherwise (see
+// resolveRequiredCorrectAnswerCount in quiz.tsx). Single-use: cleared immediately so a
+// later dev/test alarm ring doesn't pick up a stale value.
+export async function getAndClearPendingWakeFriendQuestionCount(): Promise<
+  number | null
+> {
+  const { data: userData, error: userError } = await supabase.auth.getUser();
+
+  if (userError || !userData.user) {
+    return null;
+  }
+
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('pending_wake_friend_question_count')
+    .eq('id', userData.user.id)
+    .maybeSingle();
+
+  if (error || !data?.pending_wake_friend_question_count) {
+    return null;
+  }
+
+  await supabase
+    .from('profiles')
+    .update({ pending_wake_friend_question_count: null })
+    .eq('id', userData.user.id);
+
+  return data.pending_wake_friend_question_count;
+}
+
 export async function activateWakeFriendAlarm(
   failureEntryId: string,
+  questionCount?: number,
 ): Promise<void> {
   const { error } = await supabase.functions.invoke('activate-alarm', {
-    body: { entryId: failureEntryId },
+    body: { entryId: failureEntryId, questionCount },
   });
 
   if (error) {

@@ -2,17 +2,22 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
   activateWakeFriendAlarm,
+  getAndClearPendingWakeFriendQuestionCount,
   listWakeFriendTargets,
 } from '../wake-friends';
 
 const mocks = vi.hoisted(() => ({
+  eq: vi.fn(),
   from: vi.fn(),
   functionsInvoke: vi.fn(),
+  getUser: vi.fn(),
   gte: vi.fn(),
   in: vi.fn(),
   is: vi.fn(),
   listFriends: vi.fn(),
+  maybeSingle: vi.fn(),
   select: vi.fn(),
+  update: vi.fn(),
 }));
 
 vi.mock('@/services/friend', () => ({
@@ -21,6 +26,9 @@ vi.mock('@/services/friend', () => ({
 
 vi.mock('@/lib/supabase', () => ({
   supabase: {
+    auth: {
+      getUser: mocks.getUser,
+    },
     from: mocks.from,
     functions: {
       invoke: mocks.functionsInvoke,
@@ -74,7 +82,7 @@ describe('listWakeFriendTargets', () => {
     expect(mocks.is).toHaveBeenCalledWith('activated_at', null);
     expect(mocks.gte).toHaveBeenCalledWith(
       'created_at',
-      '2026-08-22T15:00:00.000Z',
+      '2026-08-23T01:30:00.000Z',
     );
   });
 
@@ -116,10 +124,10 @@ describe('activateWakeFriendAlarm', () => {
   it('delegates activation to the existing remote alarm service', async () => {
     mocks.functionsInvoke.mockResolvedValue({ data: { sent: 1 }, error: null });
 
-    await activateWakeFriendAlarm('entry-a');
+    await activateWakeFriendAlarm('entry-a', 12);
 
     expect(mocks.functionsInvoke).toHaveBeenCalledWith('activate-alarm', {
-      body: { entryId: 'entry-a' },
+      body: { entryId: 'entry-a', questionCount: 12 },
     });
   });
 
@@ -130,5 +138,51 @@ describe('activateWakeFriendAlarm', () => {
     });
 
     await expect(activateWakeFriendAlarm('entry-a')).rejects.toThrow('boom');
+  });
+});
+
+describe('getAndClearPendingWakeFriendQuestionCount', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.getUser.mockResolvedValue({
+      data: { user: { id: 'my-profile' } },
+      error: null,
+    });
+    mocks.from.mockReturnValue({ select: mocks.select, update: mocks.update });
+    mocks.select.mockReturnValue({ eq: mocks.eq });
+    mocks.eq.mockReturnValue({ maybeSingle: mocks.maybeSingle, eq: mocks.eq });
+    mocks.update.mockReturnValue({ eq: mocks.eq });
+  });
+
+  it('returns and clears a pending question count', async () => {
+    mocks.maybeSingle.mockResolvedValue({
+      data: { pending_wake_friend_question_count: 12 },
+      error: null,
+    });
+
+    await expect(getAndClearPendingWakeFriendQuestionCount()).resolves.toBe(12);
+    expect(mocks.update).toHaveBeenCalledWith({
+      pending_wake_friend_question_count: null,
+    });
+  });
+
+  it('returns null when nothing is pending', async () => {
+    mocks.maybeSingle.mockResolvedValue({
+      data: { pending_wake_friend_question_count: null },
+      error: null,
+    });
+
+    await expect(
+      getAndClearPendingWakeFriendQuestionCount(),
+    ).resolves.toBeNull();
+    expect(mocks.update).not.toHaveBeenCalled();
+  });
+
+  it('returns null when there is no signed-in user', async () => {
+    mocks.getUser.mockResolvedValue({ data: { user: null }, error: null });
+
+    await expect(
+      getAndClearPendingWakeFriendQuestionCount(),
+    ).resolves.toBeNull();
   });
 });

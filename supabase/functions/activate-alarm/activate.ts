@@ -70,11 +70,28 @@ export type ActivateWakeFriendAlarmDeps = {
   // target would immediately reappear as an activatable Wake Friend Target for their
   // other entries.
   markActivated(targetProfileId: string, now: Date): Promise<void>;
+  setPendingQuestionCount(
+    targetProfileId: string,
+    questionCount: number | null,
+  ): Promise<void>;
   listPushTokens(profileId: string): Promise<PushTokenRow[]>;
   sendPush(messages: PushMessage[]): Promise<void>;
 };
 
 const ENTRY_VALIDITY_WINDOW_MS = 30 * 60 * 1000;
+
+// Kept in sync with MIN/MAX_QUIZ_QUESTION_COUNT in src/services/alarm.ts.
+const MIN_QUIZ_QUESTION_COUNT = 5;
+const MAX_QUIZ_QUESTION_COUNT = 30;
+
+export function isValidQuestionCount(value: unknown): value is number {
+  return (
+    typeof value === 'number' &&
+    Number.isInteger(value) &&
+    value >= MIN_QUIZ_QUESTION_COUNT &&
+    value <= MAX_QUIZ_QUESTION_COUNT
+  );
+}
 
 // A Failure Log Entry is only valid to activate for 30 minutes after it was logged --
 // listWakeFriendTargets in src/services/wake-friends.ts already filters to the same
@@ -111,6 +128,7 @@ export async function activateWakeFriendAlarm(
   requesterProfileId: string,
   deps: ActivateWakeFriendAlarmDeps,
   now: Date = new Date(),
+  questionCount: number | null = null,
 ): Promise<ActivateWakeFriendAlarmResult> {
   const entry = await deps.getEntry(entryId);
 
@@ -149,6 +167,7 @@ export async function activateWakeFriendAlarm(
   }
 
   await deps.markActivated(entry.profile_id, now);
+  await deps.setPendingQuestionCount(entry.profile_id, questionCount);
 
   const requesterProfile = await deps.getRequesterProfile(requesterProfileId);
   const activatedByDisplayName = requesterProfile?.display_name ?? '友達';
