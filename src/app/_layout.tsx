@@ -3,6 +3,7 @@ import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
 import { AppRegistry, InteractionManager } from 'react-native';
 
+import { restoreStoredLanguage } from '@/i18n';
 import { resyncAllScheduledAlarms } from '@/services/alarm';
 import { getCurrentUserId } from '@/services/auth';
 import { getMyProfile } from '@/services/user';
@@ -97,6 +98,10 @@ export default function RootLayout() {
     NotoSansJP_700Bold,
   });
   //todo:ロードの完了/未完了を判定して、未完了の場合はローディングを入れる
+
+  useEffect(() => {
+    restoreStoredLanguage();
+  }, []);
 
   useEffect(() => {
     return registerWakeFriendNotificationHandlers();

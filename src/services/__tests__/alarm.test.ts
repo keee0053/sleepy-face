@@ -56,6 +56,7 @@ function storedAlarm(overrides: Partial<SavedAlarm> = {}): SavedAlarm {
     isEnabled: true,
     lastFiredLocalDay: null,
     minute: 30,
+    questionCount: 5,
     soundId: 'default',
     updatedAt: '2026-08-17T00:00:00.000Z',
     weekdays: [1, 3],
@@ -94,6 +95,7 @@ describe('Saved Alarm service', () => {
         minute: 30,
         weekdays: [5, 1, 3],
         soundId: 'default',
+        questionCount: 5,
       }),
     ).resolves.toEqual({
       createdAt: '2026-08-17T00:00:00.000Z',
@@ -103,6 +105,7 @@ describe('Saved Alarm service', () => {
       lastFiredLocalDay: null,
       minute: 30,
       soundId: 'default',
+      questionCount: 5,
       updatedAt: '2026-08-17T00:00:00.000Z',
       weekdays: [1, 3, 5],
     });
@@ -116,6 +119,7 @@ describe('Saved Alarm service', () => {
           isEnabled: true,
           lastFiredLocalDay: null,
           minute: 30,
+          questionCount: 5,
           soundId: 'default',
           updatedAt: '2026-08-17T00:00:00.000Z',
           weekdays: [1, 3, 5],
@@ -134,6 +138,7 @@ describe('Saved Alarm service', () => {
         minute: 45,
         weekdays: [3],
         soundId: 'default',
+        questionCount: 5,
       }),
     ).resolves.toEqual({
       createdAt: '2026-08-17T00:00:00.000Z',
@@ -143,6 +148,7 @@ describe('Saved Alarm service', () => {
       lastFiredLocalDay: null,
       minute: 45,
       soundId: 'default',
+      questionCount: 5,
       updatedAt: '2026-08-18T00:00:00.000Z',
       weekdays: [3],
     });
@@ -213,6 +219,7 @@ describe('Saved Alarm service', () => {
         minute: 30,
         weekdays: [1],
         soundId: 'default',
+        questionCount: 5,
       }),
     ).rejects.toMatchObject({ code: 'invalid_alarm_input' });
 
@@ -222,6 +229,7 @@ describe('Saved Alarm service', () => {
         minute: 60,
         weekdays: [1],
         soundId: 'default',
+        questionCount: 5,
       }),
     ).rejects.toMatchObject({ code: 'invalid_alarm_input' });
 
@@ -231,6 +239,7 @@ describe('Saved Alarm service', () => {
         minute: 30,
         weekdays: [],
         soundId: 'default',
+        questionCount: 5,
       }),
     ).rejects.toMatchObject({ code: 'invalid_alarm_input' });
 
@@ -240,6 +249,7 @@ describe('Saved Alarm service', () => {
         minute: 30,
         weekdays: [1, 1],
         soundId: 'default',
+        questionCount: 5,
       }),
     ).rejects.toMatchObject({ code: 'invalid_alarm_input' });
 
@@ -249,6 +259,7 @@ describe('Saved Alarm service', () => {
         minute: 30,
         weekdays: [7],
         soundId: 'default',
+        questionCount: 5,
       }),
     ).rejects.toMatchObject({ code: 'invalid_alarm_input' });
   });
@@ -262,6 +273,7 @@ describe('Saved Alarm service', () => {
         minute: 0,
         weekdays: [3, 5],
         soundId: 'default',
+        questionCount: 5,
       }),
     ).rejects.toSatisfy((error: unknown) => {
       expectAlarmServiceError(error, 'weekday_already_used');
@@ -277,6 +289,7 @@ describe('Saved Alarm service', () => {
         minute: 0,
         weekdays: [1, 3],
         soundId: 'default',
+        questionCount: 5,
       }),
     ).resolves.toMatchObject({
       hour: 8,
@@ -291,6 +304,7 @@ describe('Saved Alarm service', () => {
         minute: 30,
         weekdays: [1],
         soundId: 'default',
+        questionCount: 5,
       }),
     ).rejects.toMatchObject({ code: 'saved_alarm_not_found' });
 
@@ -331,6 +345,7 @@ describe('Saved Alarm service', () => {
         minute: 30,
         weekdays: [1],
         soundId: 'default',
+        questionCount: 5,
       }),
     ).rejects.toMatchObject({
       code: 'storage_write_failed',
@@ -456,6 +471,7 @@ describe('Saved Alarm service', () => {
       minute: 30,
       weekdays: [1, 3],
       soundId: 'default',
+      questionCount: 5,
     });
 
     const expectedNext = getNextAlarmOccurrence(created);
@@ -474,6 +490,7 @@ describe('Saved Alarm service', () => {
       hour: 8,
       minute: 45,
       soundId: 'default',
+      questionCount: 5,
       weekdays: [3],
     });
 
@@ -531,6 +548,7 @@ describe('Saved Alarm service', () => {
       hour: 6,
       minute: 0,
       soundId: 'default',
+      questionCount: 5,
       weekdays: [2],
     });
 
@@ -560,6 +578,7 @@ describe('Saved Alarm service', () => {
         hour: 7,
         minute: 30,
         soundId: 'default',
+        questionCount: 5,
         weekdays: [1],
       }),
     ).rejects.toMatchObject({ code: 'alarm_scheduling_failed' });
@@ -580,6 +599,7 @@ describe('Saved Alarm service', () => {
         hour: 8,
         minute: 45,
         soundId: 'default',
+        questionCount: 5,
         weekdays: [3],
       }),
     ).rejects.toMatchObject({ code: 'alarm_scheduling_failed' });
@@ -663,6 +683,7 @@ describe('Saved Alarm service', () => {
       minute: fired!.minute,
       weekdays: fired!.weekdays,
       soundId: 'default',
+      questionCount: 5,
     });
 
     // The one-Daily-Alarm-Attempt-per-day limit must survive delete+recreate.

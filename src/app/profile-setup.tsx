@@ -1,6 +1,7 @@
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   ActivityIndicator,
   InteractionManager,
@@ -16,8 +17,8 @@ import {
 } from 'react-native';
 
 import {
+  getProfileIconLabel,
   getProfileIconSource,
-  PROFILE_ICON_LABELS,
   PROFILE_ICON_SOURCES,
 } from '@/constants/profile-icons';
 import { LoadingButtonContent, LoadingState } from '@/components/loading';
@@ -48,35 +49,42 @@ function replaceToHome(): void {
   });
 }
 
-function getValidationMessage(code: InitialSetupValidationErrorCode): string {
+function getValidationMessage(
+  code: InitialSetupValidationErrorCode,
+  t: (key: string) => string,
+): string {
   switch (code) {
     case 'public_user_id_invalid':
-      return 'ユーザーIDは3〜20文字の英数字、_、-で入力してください。';
+      return t('profileSetup.errors.publicUserIdInvalid');
     case 'display_name_required':
-      return '表示名を入力してください。';
+      return t('profileSetup.errors.displayNameRequired');
     case 'display_name_too_long':
-      return '表示名は30文字以内で入力してください。';
+      return t('profileSetup.errors.displayNameTooLong');
   }
 }
 
-function getCreateProfileErrorMessage(error: unknown): string {
+function getCreateProfileErrorMessage(
+  error: unknown,
+  t: (key: string) => string,
+): string {
   if (error instanceof UserServiceError) {
     switch (error.code) {
       case 'user_id_already_taken':
-        return 'このユーザーIDはすでに使われています。別のIDを入力してください。';
+        return t('profileSetup.errors.userIdAlreadyTaken');
       case 'invalid_profile_input':
-        return '入力内容を確認してください。';
+        return t('profileSetup.errors.invalidProfileInput');
       case 'not_authenticated':
       case 'profile_already_created':
       case 'unexpected_error':
-        return 'プロフィールを作成できませんでした。もう一度お試しください。';
+        return t('profileSetup.errors.createProfileFailed');
     }
   }
 
-  return 'プロフィールを作成できませんでした。もう一度お試しください。';
+  return t('profileSetup.errors.createProfileFailed');
 }
 
 export default function ProfileSetupScreen() {
+  const { t } = useTranslation();
   const [displayName, setDisplayName] = useState('');
   const [publicUserId, setPublicUserId] = useState('');
   const [iconId, setIconId] = useState<string>(DEFAULT_PROFILE_ICON_ID);
@@ -116,9 +124,7 @@ export default function ProfileSetupScreen() {
 
     protectSetupRoute().catch(() => {
       if (isActive) {
-        setErrorMessage(
-          'プロフィール状態を確認できませんでした。もう一度お試しください。',
-        );
+        setErrorMessage(t('profileSetup.errors.checkProfileFailed'));
         setIsCheckingProfile(false);
       }
     });
@@ -126,7 +132,7 @@ export default function ProfileSetupScreen() {
     return () => {
       isActive = false;
     };
-  }, []);
+  }, [t]);
 
   const handlePublicUserIdChange = useCallback((value: string) => {
     setPublicUserId(normalizePublicUserId(value));
@@ -163,7 +169,7 @@ export default function ProfileSetupScreen() {
     });
 
     if (!validationResult.isValid) {
-      setErrorMessage(getValidationMessage(validationResult.code));
+      setErrorMessage(getValidationMessage(validationResult.code, t));
       return;
     }
 
@@ -187,17 +193,17 @@ export default function ProfileSetupScreen() {
         return;
       }
 
-      setErrorMessage(getCreateProfileErrorMessage(error));
+      setErrorMessage(getCreateProfileErrorMessage(error, t));
     } finally {
       setIsSubmitting(false);
     }
-  }, [displayName, iconId, publicUserId]);
+  }, [displayName, iconId, publicUserId, t]);
 
   if (isCheckingProfile) {
     return (
       <SafeAreaView style={styles.safeArea}>
         <LoadingState
-          message="プロフィールを確認しています..."
+          message={t('profileSetup.checkingProfile')}
           size="large"
           variant="screen"
         />
@@ -216,7 +222,7 @@ export default function ProfileSetupScreen() {
           showsVerticalScrollIndicator={false}
         >
           <View style={styles.topContent}>
-            <Text style={styles.title}>プロフィール設定</Text>
+            <Text style={styles.title}>{t('profileSetup.title')}</Text>
 
             <View style={styles.avatarSection}>
               <View style={styles.avatarPreview}>
@@ -239,7 +245,9 @@ export default function ProfileSetupScreen() {
                 {isPickingPhoto ? (
                   <ActivityIndicator color="#171717" size="small" />
                 ) : (
-                  <Text style={styles.pickPhotoButtonText}>写真を選ぶ</Text>
+                  <Text style={styles.pickPhotoButtonText}>
+                    {t('profileSetup.pickPhotoButton')}
+                  </Text>
                 )}
               </Pressable>
 
@@ -249,7 +257,7 @@ export default function ProfileSetupScreen() {
 
                   return (
                     <Pressable
-                      accessibilityLabel={PROFILE_ICON_LABELS[id]}
+                      accessibilityLabel={getProfileIconLabel(id, t)}
                       accessibilityRole="radio"
                       accessibilityState={{ selected: isSelected }}
                       disabled={isSubmitting}
@@ -272,16 +280,18 @@ export default function ProfileSetupScreen() {
               </View>
 
               <Text style={styles.avatarCaption}>
-                プロフィールアイコンを選んでください
+                {t('profileSetup.avatarCaption')}
               </Text>
             </View>
 
             <View style={styles.field}>
-              <Text style={styles.label}>ユーザー名</Text>
+              <Text style={styles.label}>
+                {t('profileSetup.displayNameLabel')}
+              </Text>
               <TextInput
                 editable={!isSubmitting}
                 onChangeText={setDisplayName}
-                placeholder="例：山田 太郎"
+                placeholder={t('profileSetup.displayNamePlaceholder')}
                 placeholderTextColor="#a3a3a3"
                 style={styles.input}
                 value={displayName}
@@ -289,18 +299,20 @@ export default function ProfileSetupScreen() {
             </View>
 
             <View style={styles.field}>
-              <Text style={styles.label}>userID</Text>
+              <Text style={styles.label}>{t('profileSetup.userIdLabel')}</Text>
               <TextInput
                 autoCapitalize="none"
                 autoCorrect={false}
                 editable={!isSubmitting}
                 onChangeText={handlePublicUserIdChange}
-                placeholder="例：yamada_kun"
+                placeholder={t('profileSetup.userIdPlaceholder')}
                 placeholderTextColor="#a3a3a3"
                 style={styles.input}
                 value={publicUserId}
               />
-              <Text style={styles.helperText}>友達検索に使用します</Text>
+              <Text style={styles.helperText}>
+                {t('profileSetup.userIdHelperText')}
+              </Text>
             </View>
           </View>
 
@@ -316,9 +328,9 @@ export default function ProfileSetupScreen() {
               ]}
             >
               <LoadingButtonContent
-                label="登録する"
+                label={t('profileSetup.submitButton')}
                 loading={isSubmitting}
-                loadingLabel="作成中..."
+                loadingLabel={t('profileSetup.submitting')}
                 textStyle={styles.submitButtonText}
                 tone="light"
               />

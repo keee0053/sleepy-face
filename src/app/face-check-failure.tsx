@@ -1,10 +1,12 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { useAlarmTimer } from '@/services/alarm-timer';
 
 export default function FaceCheckFailureScreen() {
+  const { t } = useTranslation();
   const params = useLocalSearchParams<{
     alarmId?: string;
     badPhotoAttempts?: string;
@@ -42,8 +44,8 @@ export default function FaceCheckFailureScreen() {
           </View>
 
           <View style={styles.copy}>
-            <Text style={styles.title}>顔判定に失敗しました</Text>
-            <Text style={styles.caption}>もう一度顔写真を撮影してください</Text>
+            <Text style={styles.title}>{t('faceCheckFailure.title')}</Text>
+            <Text style={styles.caption}>{t('faceCheckFailure.caption')}</Text>
           </View>
         </View>
 
@@ -55,7 +57,9 @@ export default function FaceCheckFailureScreen() {
             pressed && styles.buttonPressed,
           ]}
         >
-          <Text style={styles.buttonText}>再度写真を撮影する</Text>
+          <Text style={styles.buttonText}>
+            {t('faceCheckFailure.retryButton')}
+          </Text>
         </Pressable>
       </ScrollView>
     </View>

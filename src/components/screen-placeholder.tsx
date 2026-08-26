@@ -1,4 +1,5 @@
 import { router } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { Pressable, SafeAreaView, StyleSheet, Text, View } from 'react-native';
 
 type ScreenPlaceholderProps = {
@@ -6,6 +7,8 @@ type ScreenPlaceholderProps = {
 };
 
 export function ScreenPlaceholder({ title }: ScreenPlaceholderProps) {
+  const { t } = useTranslation();
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.container}>
@@ -22,7 +25,9 @@ export function ScreenPlaceholder({ title }: ScreenPlaceholderProps) {
             pressed && styles.backButtonPressed,
           ]}
         >
-          <Text style={styles.backButtonText}>画面一覧に戻る</Text>
+          <Text style={styles.backButtonText}>
+            {t('screenPlaceholder.backToMenu')}
+          </Text>
         </Pressable>
       </View>
     </SafeAreaView>

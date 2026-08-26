@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   AccessibilityInfo,
   ActivityIndicator,
@@ -40,13 +41,15 @@ function getIndicatorColor(tone: LoadingTone): string {
 }
 
 export function LoadingIndicator({
-  accessibilityLabel = '読み込み中',
+  accessibilityLabel,
   size = 'small',
   tone = 'dark',
 }: LoadingIndicatorProps) {
+  const { t } = useTranslation();
+
   return (
     <ActivityIndicator
-      accessibilityLabel={accessibilityLabel}
+      accessibilityLabel={accessibilityLabel ?? t('loading.loading')}
       accessibilityRole="progressbar"
       color={getIndicatorColor(tone)}
       size={size}
@@ -56,27 +59,30 @@ export function LoadingIndicator({
 
 export function LoadingState({
   accessibilityLabel,
-  message = '読み込み中...',
+  message,
   size = 'small',
   style,
   tone = 'dark',
   variant = 'section',
 }: LoadingStateProps) {
+  const { t } = useTranslation();
+  const resolvedMessage = message ?? t('loading.loadingEllipsis');
+
   return (
     <View
       accessibilityLiveRegion="polite"
       style={[styles.state, styles[variant], style]}
     >
       <LoadingIndicator
-        accessibilityLabel={accessibilityLabel ?? message}
+        accessibilityLabel={accessibilityLabel ?? resolvedMessage}
         size={size}
         tone={tone}
       />
-      {message.length > 0 && (
+      {resolvedMessage.length > 0 && (
         <Text
           style={tone === 'light' ? styles.lightMessage : styles.darkMessage}
         >
-          {message}
+          {resolvedMessage}
         </Text>
       )}
     </View>
@@ -90,6 +96,8 @@ export function LoadingButtonContent({
   textStyle,
   tone = 'dark',
 }: LoadingButtonContentProps) {
+  const { t } = useTranslation();
+
   if (!loading) {
     return <Text style={textStyle}>{label}</Text>;
   }
@@ -97,7 +105,9 @@ export function LoadingButtonContent({
   return (
     <View accessibilityLiveRegion="polite" style={styles.buttonContent}>
       <LoadingIndicator
-        accessibilityLabel={loadingLabel || `${label}を処理中`}
+        accessibilityLabel={
+          loadingLabel || t('loading.processingLabel', { label })
+        }
         tone={tone}
       />
       {loadingLabel.length > 0 && <Text style={textStyle}>{loadingLabel}</Text>}
@@ -109,9 +119,9 @@ type FaceCheckLoadingProps = {
   message?: string;
 };
 
-export function FaceCheckLoading({
-  message = '顔を確認しています...',
-}: FaceCheckLoadingProps) {
+export function FaceCheckLoading({ message }: FaceCheckLoadingProps) {
+  const { t } = useTranslation();
+  const resolvedMessage = message ?? t('loading.checkingFace');
   const [pulse] = useState(() => new Animated.Value(0));
 
   useEffect(() => {
@@ -155,7 +165,9 @@ export function FaceCheckLoading({
 
   return (
     <View
-      accessibilityLabel={`${message} そのままお待ちください`}
+      accessibilityLabel={t('loading.faceCheckAccessibilityLabel', {
+        message: resolvedMessage,
+      })}
       accessibilityLiveRegion="polite"
       accessibilityRole="progressbar"
       style={styles.faceCheckOverlay}
@@ -180,13 +192,13 @@ export function FaceCheckLoading({
         ]}
       >
         <View style={styles.faceCheckCircle}>
-          <LoadingIndicator accessibilityLabel={message} tone="light" />
+          <LoadingIndicator accessibilityLabel={resolvedMessage} tone="light" />
         </View>
       </Animated.View>
 
       <View style={styles.faceCheckCopy}>
-        <Text style={styles.faceCheckTitle}>{message}</Text>
-        <Text style={styles.faceCheckCaption}>そのままお待ちください</Text>
+        <Text style={styles.faceCheckTitle}>{resolvedMessage}</Text>
+        <Text style={styles.faceCheckCaption}>{t('loading.pleaseWait')}</Text>
       </View>
     </View>
   );

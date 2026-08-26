@@ -1,10 +1,12 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
 const QUIZ_START_COUNTDOWN_SECONDS = 5;
 
 export default function FaceCheckSuccessScreen() {
+  const { t } = useTranslation();
   const params = useLocalSearchParams<{
     alarmId?: string;
     localPhotoUri?: string;
@@ -49,9 +51,11 @@ export default function FaceCheckSuccessScreen() {
           </View>
 
           <View style={styles.copy}>
-            <Text style={styles.title}>顔判定ができました！</Text>
+            <Text style={styles.title}>{t('faceCheckSuccess.title')}</Text>
             <Text style={styles.caption}>
-              {QUIZ_START_COUNTDOWN_SECONDS}秒後にクイズが開始します！
+              {t('faceCheckSuccess.caption', {
+                seconds: QUIZ_START_COUNTDOWN_SECONDS,
+              })}
             </Text>
           </View>
 

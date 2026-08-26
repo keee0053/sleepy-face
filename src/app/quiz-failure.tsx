@@ -1,5 +1,6 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { ActionButton, challengeStyles } from '@/components/wake-challenge-ui';
@@ -8,6 +9,7 @@ import { recordFailureAccessOutcome } from '@/services/friends-feed-access';
 import type { WakeChallengeFailureReason } from '@/services/wake-challenge-rules';
 import { clearWakeChallengeAttempt } from '@/services/wake-challenge-attempt';
 import { logWakeChallengeFailure } from '@/services/wake-friends';
+import { recordWakeAttemptOutcome } from '@/services/wake-status';
 
 type NoPhotoFailureReason = Extract<
   WakeChallengeFailureReason,
@@ -25,25 +27,39 @@ function getFailureReason(reason?: string): NoPhotoFailureReason {
   }
 }
 
-function getFailureCopy(reason: NoPhotoFailureReason) {
+function getFailureCopy(
+  reason: NoPhotoFailureReason,
+  t: (key: string) => string,
+) {
   switch (reason) {
     case 'app-quit':
-      return 'チャレンジの途中でアプリが終了しました。今日はフィードを見られません。';
+      return t('quizFailure.reasons.appQuit');
     case 'bad-photo-limit':
-      return '顔写真を確認できなかったため、今日はフィードを見られません。';
+      return t('quizFailure.reasons.badPhotoLimit');
     case 'no-photo-timeout':
-      return '写真を残せないまま時間切れになりました。今日はフィードを見られません。';
+      return t('quizFailure.reasons.noPhotoTimeout');
   }
 }
 
 export default function QuizFailureScreen() {
+  const { t } = useTranslation();
   const params = useLocalSearchParams<{
     reason?: string;
+    requiredQuestionCount?: string;
   }>();
 
   const failureReason = getFailureReason(params.reason);
 
   useEffect(() => {
+    // Read (via recordWakeAttemptOutcome) before clearing -- clearWakeChallengeAttempt
+    // removes the very attempt record it needs to know when the alarm rang. No question
+    // count when the failure happened before the quiz stage even started (Bad Photo
+    // Limit, from face-check.tsx).
+    const requiredQuestionCount = params.requiredQuestionCount
+      ? Number(params.requiredQuestionCount)
+      : null;
+
+    recordWakeAttemptOutcome('failure', requiredQuestionCount).catch(() => {});
     clearWakeChallengeAttempt().catch(() => {});
     recordFailureAccessOutcome(failureReason).catch(() => {});
     logWakeChallengeFailure().catch(() => {});
@@ -52,7 +68,7 @@ export default function QuizFailureScreen() {
     // Bad Photo Attempt (see face-check.tsx). Otherwise it rings with no in-app way to
     // silence it.
     stopRingingAlarm().catch(() => {});
-  }, [failureReason]);
+  }, [failureReason, params.requiredQuestionCount]);
 
   return (
     <View style={styles.screen}>
@@ -66,14 +82,16 @@ export default function QuizFailureScreen() {
           </View>
 
           <View style={styles.copy}>
-            <Text style={challengeStyles.darkTitle}>起床失敗</Text>
+            <Text style={challengeStyles.darkTitle}>
+              {t('quizFailure.title')}
+            </Text>
             <Text style={challengeStyles.darkCaption}>
-              {getFailureCopy(failureReason)}
+              {getFailureCopy(failureReason, t)}
             </Text>
           </View>
 
           <ActionButton
-            label="アラームへ戻る"
+            label={t('quizFailure.backToAlarmButton')}
             onPress={() => router.replace('/home')}
             variant="secondary"
           />

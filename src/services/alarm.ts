@@ -20,6 +20,10 @@ const LAST_ALARM_ATTEMPT_LOCAL_DAY_STORAGE_KEY =
 
 export type Weekday = 0 | 1 | 2 | 3 | 4 | 5 | 6;
 
+export const MIN_QUIZ_QUESTION_COUNT = 5;
+export const MAX_QUIZ_QUESTION_COUNT = 30;
+export const DEFAULT_QUIZ_QUESTION_COUNT = 5;
+
 export type SavedAlarm = {
   id: string;
   hour: number;
@@ -27,6 +31,7 @@ export type SavedAlarm = {
   weekdays: Weekday[];
   isEnabled: boolean;
   soundId: AlarmSoundId;
+  questionCount: number;
   lastFiredLocalDay: string | null;
   createdAt: string;
   updatedAt: string;
@@ -37,6 +42,7 @@ export type SaveAlarmInput = {
   minute: number;
   weekdays: number[];
   soundId: string;
+  questionCount: number;
 };
 
 export type AlarmServiceErrorCode =
@@ -61,6 +67,7 @@ type StoredAlarmRow = {
   weekdays: unknown;
   isEnabled?: unknown;
   soundId?: unknown;
+  questionCount?: unknown;
   lastFiredLocalDay?: unknown;
   createdAt: unknown;
   updatedAt: unknown;
@@ -89,6 +96,15 @@ function isValidTimePart(value: unknown, min: number, max: number): boolean {
 
 function isWeekday(value: number): value is Weekday {
   return Number.isInteger(value) && value >= 0 && value <= 6;
+}
+
+function isValidQuestionCount(value: unknown): value is number {
+  return (
+    typeof value === 'number' &&
+    Number.isInteger(value) &&
+    value >= MIN_QUIZ_QUESTION_COUNT &&
+    value <= MAX_QUIZ_QUESTION_COUNT
+  );
 }
 
 function normalizeWeekdays(
@@ -126,6 +142,7 @@ function validateAlarmInput(input: SaveAlarmInput): {
   minute: number;
   weekdays: Weekday[];
   soundId: AlarmSoundId;
+  questionCount: number;
 } {
   if (!isValidTimePart(input.hour, 0, 23)) {
     throw new AlarmServiceError(
@@ -155,9 +172,17 @@ function validateAlarmInput(input: SaveAlarmInput): {
     );
   }
 
+  if (!isValidQuestionCount(input.questionCount)) {
+    throw new AlarmServiceError(
+      'invalid_alarm_input',
+      `Saved Alarm question count must be an integer from ${MIN_QUIZ_QUESTION_COUNT} to ${MAX_QUIZ_QUESTION_COUNT}.`,
+    );
+  }
+
   return {
     hour: input.hour,
     minute: input.minute,
+    questionCount: input.questionCount,
     soundId: input.soundId,
     weekdays: normalizeWeekdays(input.weekdays, 'invalid_alarm_input'),
   };
@@ -203,6 +228,11 @@ function mapStoredAlarm(value: unknown): SavedAlarm {
     lastFiredLocalDay:
       typeof row.lastFiredLocalDay === 'string' ? row.lastFiredLocalDay : null,
     minute: row.minute as number,
+    // Older local alarms saved before this option existed are treated as the default
+    // question count.
+    questionCount: isValidQuestionCount(row.questionCount)
+      ? row.questionCount
+      : DEFAULT_QUIZ_QUESTION_COUNT,
     // Older local alarms saved before this option existed are treated as the default
     // sound, same fallback as an unrecognized id.
     soundId: toAlarmSoundId(
@@ -431,6 +461,12 @@ export async function listSavedAlarms(): Promise<SavedAlarm[]> {
   );
 }
 
+export async function getSavedAlarm(id: string): Promise<SavedAlarm | null> {
+  const savedAlarms = await readSavedAlarms();
+
+  return savedAlarms.find((alarm) => alarm.id === id) ?? null;
+}
+
 export async function createSavedAlarm(
   input: SaveAlarmInput,
 ): Promise<SavedAlarm> {
@@ -452,6 +488,7 @@ export async function createSavedAlarm(
         ? lastAlarmAttemptLocalDay
         : null,
     minute: validatedInput.minute,
+    questionCount: validatedInput.questionCount,
     soundId: validatedInput.soundId,
     updatedAt: now,
     weekdays: validatedInput.weekdays,
@@ -485,6 +522,7 @@ export async function updateSavedAlarm(
     ...targetAlarm,
     hour: validatedInput.hour,
     minute: validatedInput.minute,
+    questionCount: validatedInput.questionCount,
     soundId: validatedInput.soundId,
     updatedAt: new Date().toISOString(),
     weekdays: validatedInput.weekdays,

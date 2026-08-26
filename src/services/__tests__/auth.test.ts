@@ -158,6 +158,9 @@ describe('Google Login service', () => {
       options: {
         redirectTo: 'sleepyface://google-auth',
         skipBrowserRedirect: true,
+        queryParams: {
+          prompt: 'select_account',
+        },
       },
     });
     expect(mocks.openAuthSessionAsync).toHaveBeenCalledWith(

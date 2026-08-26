@@ -12,12 +12,15 @@ export type AlarmSoundId = (typeof ALARM_SOUND_IDS)[number];
 
 export const DEFAULT_ALARM_SOUND_ID: AlarmSoundId = 'default';
 
-export const ALARM_SOUND_LABELS: Record<AlarmSoundId, string> = {
-  classic_beep: 'クラシックビープ',
-  default: '端末のデフォルト',
-  digital_pulse: 'デジタルパルス',
-  gentle_chime: 'やさしいチャイム',
-};
+// A plain Record can't reactively follow a runtime language switch, so this is a
+// function taking `t` from the calling component's own useTranslation(), same pattern
+// as getProfileIconLabel in src/constants/profile-icons.ts.
+export function getAlarmSoundLabel(
+  soundId: AlarmSoundId,
+  t: (key: string) => string,
+): string {
+  return t(`alarmSounds.${soundId === 'default' ? 'deviceDefault' : soundId}`);
+}
 
 export function isAlarmSoundId(value: string): value is AlarmSoundId {
   return (ALARM_SOUND_IDS as readonly string[]).includes(value);

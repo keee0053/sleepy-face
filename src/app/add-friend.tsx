@@ -2,6 +2,7 @@ import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { SymbolView } from 'expo-symbols';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   FlatList,
   Pressable,
@@ -16,11 +17,14 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { LoadingButtonContent } from '@/components/loading';
 import { FriendListLoadingSkeleton } from '@/components/loading-skeletons';
 import { PROFILE_ICON_SOURCES } from '@/constants/profile-icons';
+import { getCurrentUserId } from '@/services/auth';
 import {
   FriendServiceError,
+  acceptFriendRequest,
   addFriend,
   listFriendRelations,
   normalizeFriendSearchQuery,
+  resolveFriendProfileId,
   searchProfiles,
   type FriendRelation,
   type FriendSearchProfile,
@@ -29,25 +33,30 @@ import {
 // Flip to true locally to use the dev-only debug tools below. Always false in committed code.
 const SHOW_DEBUG_TOOLS = false;
 
-function getFriendErrorMessage(error: unknown): string {
+function getFriendErrorMessage(
+  error: unknown,
+  t: (key: string) => string,
+): string {
   if (error instanceof FriendServiceError) {
     switch (error.code) {
       case 'not_authenticated':
-        return 'ログイン状態を確認できませんでした。もう一度ログインしてください。';
+        return t('addFriend.errors.notAuthenticated');
       case 'self_relation':
-        return '自分自身は友達に追加できません。';
+        return t('addFriend.errors.selfRelation');
       case 'already_friend':
-        return 'すでに友達に追加されています。';
+        return t('addFriend.errors.alreadyFriend');
       case 'unexpected_error':
-        return '友達情報を更新できませんでした。もう一度お試しください。';
+        return t('addFriend.errors.unexpectedError');
     }
   }
 
-  return '友達情報を更新できませんでした。もう一度お試しください。';
+  return t('addFriend.errors.unexpectedError');
 }
 
 export default function AddFriendScreen() {
+  const { t } = useTranslation();
   const [query, setQuery] = useState('');
+  const [viewerProfileId, setViewerProfileId] = useState<string | null>(null);
   const [relations, setRelations] = useState<FriendRelation[]>([]);
   const [results, setResults] = useState<FriendSearchProfile[]>([]);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -56,29 +65,67 @@ export default function AddFriendScreen() {
   const [isLoadingRelations, setIsLoadingRelations] = useState(true);
   const [isSearching, setIsSearching] = useState(false);
 
-  const friendProfileIds = useMemo(() => {
-    const ids = new Set<string>();
-
-    for (const relation of relations) {
-      ids.add(relation.profileId);
-      ids.add(relation.friendProfileId);
+  // The other person's profile id for every accepted relation.
+  const acceptedProfileIds = useMemo(() => {
+    if (!viewerProfileId) {
+      return new Set<string>();
     }
 
-    return ids;
-  }, [relations]);
+    return new Set(
+      relations
+        .filter((relation) => relation.status === 'accepted')
+        .map((relation) => resolveFriendProfileId(relation, viewerProfileId)),
+    );
+  }, [relations, viewerProfileId]);
+
+  // The other person's profile id for every pending request the viewer sent.
+  const outgoingPendingProfileIds = useMemo(() => {
+    if (!viewerProfileId) {
+      return new Set<string>();
+    }
+
+    return new Set(
+      relations
+        .filter(
+          (relation) =>
+            relation.status === 'pending' &&
+            relation.profileId === viewerProfileId,
+        )
+        .map((relation) => relation.friendProfileId),
+    );
+  }, [relations, viewerProfileId]);
+
+  // Pending requests sent TO the viewer, keyed by the requester's profile id -- pressing
+  // the button on one of these accepts it instead of sending a new, reversed request.
+  const incomingPendingRelationByProfileId = useMemo(() => {
+    if (!viewerProfileId) {
+      return new Map<string, FriendRelation>();
+    }
+
+    return new Map(
+      relations
+        .filter(
+          (relation) =>
+            relation.status === 'pending' &&
+            relation.friendProfileId === viewerProfileId,
+        )
+        .map((relation) => [relation.profileId, relation]),
+    );
+  }, [relations, viewerProfileId]);
 
   useEffect(() => {
     let isActive = true;
 
-    listFriendRelations()
-      .then((nextRelations) => {
+    Promise.all([getCurrentUserId(), listFriendRelations()])
+      .then(([nextViewerProfileId, nextRelations]) => {
         if (isActive) {
+          setViewerProfileId(nextViewerProfileId);
           setRelations(nextRelations);
         }
       })
       .catch((error: unknown) => {
         if (isActive) {
-          setErrorMessage(getFriendErrorMessage(error));
+          setErrorMessage(getFriendErrorMessage(error, t));
         }
       })
       .finally(() => {
@@ -90,7 +137,7 @@ export default function AddFriendScreen() {
     return () => {
       isActive = false;
     };
-  }, []);
+  }, [t]);
 
   const handleSearch = useCallback(async () => {
     const normalizedQuery = normalizeFriendSearchQuery(query);
@@ -100,7 +147,7 @@ export default function AddFriendScreen() {
 
     if (normalizedQuery.length < 2) {
       setResults([]);
-      setErrorMessage('ユーザーIDを2文字以上入力してください。');
+      setErrorMessage(t('addFriend.errors.queryTooShort'));
       return;
     }
 
@@ -112,37 +159,66 @@ export default function AddFriendScreen() {
       setResults(profiles);
 
       if (profiles.length === 0) {
-        setErrorMessage('該当するユーザーが見つかりませんでした。');
+        setErrorMessage(t('addFriend.errors.noResults'));
       }
     } catch (error) {
-      setErrorMessage(getFriendErrorMessage(error));
+      setErrorMessage(getFriendErrorMessage(error, t));
     } finally {
       setIsSearching(false);
     }
-  }, [query]);
+  }, [query, t]);
 
-  const handleAddFriend = useCallback(async (profile: FriendSearchProfile) => {
-    setErrorMessage(null);
-    setSuccessMessage(null);
-    setAddingProfileId(profile.id);
+  const handleAddFriend = useCallback(
+    async (profile: FriendSearchProfile) => {
+      setErrorMessage(null);
+      setSuccessMessage(null);
+      setAddingProfileId(profile.id);
 
-    try {
-      const relation = await addFriend(profile.id);
-      setRelations((currentRelations) => [relation, ...currentRelations]);
-      setSuccessMessage(`${profile.displayName}を友達に追加しました。`);
-    } catch (error) {
-      setErrorMessage(getFriendErrorMessage(error));
-    } finally {
-      setAddingProfileId(null);
-    }
-  }, []);
+      try {
+        // This person already sent the viewer a request -- accept it instead of sending
+        // a new, reversed one.
+        const incomingRelation = incomingPendingRelationByProfileId.get(
+          profile.id,
+        );
+
+        if (incomingRelation) {
+          const relation = await acceptFriendRequest(incomingRelation.id);
+
+          setRelations((currentRelations) =>
+            currentRelations.map((currentRelation) =>
+              currentRelation.id === relation.id ? relation : currentRelation,
+            ),
+          );
+          setSuccessMessage(
+            t('addFriend.becameFriendsSuccess', {
+              displayName: profile.displayName,
+            }),
+          );
+          return;
+        }
+
+        const relation = await addFriend(profile.id);
+        setRelations((currentRelations) => [relation, ...currentRelations]);
+        setSuccessMessage(
+          t('addFriend.requestSentSuccess', {
+            displayName: profile.displayName,
+          }),
+        );
+      } catch (error) {
+        setErrorMessage(getFriendErrorMessage(error, t));
+      } finally {
+        setAddingProfileId(null);
+      }
+    },
+    [incomingPendingRelationByProfileId, t],
+  );
 
   // DEV-ONLY: injects a mock search result already marked as a friend (no Supabase write), to preview the disabled "追加済み" state. Remove before ship.
   const handleAddMockExistingFriend = useCallback(() => {
     const mockId = `mock-existing-${Date.now()}`;
     const mockProfile: FriendSearchProfile = {
       createdAt: new Date().toISOString(),
-      displayName: 'モック既存友達',
+      displayName: t('addFriend.debug.mockExistingFriendName'),
       iconId: 'man2',
       id: mockId,
       userId: `mock_existing_${Date.now()}`,
@@ -154,28 +230,32 @@ export default function AddFriendScreen() {
         createdAt: new Date().toISOString(),
         friendProfileId: mockId,
         id: `mock-relation-${Date.now()}`,
-        profileId: 'mock-self',
+        profileId: viewerProfileId ?? 'mock-self',
+        status: 'accepted',
       },
       ...currentRelations,
     ]);
-  }, []);
+  }, [t, viewerProfileId]);
 
   // DEV-ONLY: injects a mock search result not yet a friend (no Supabase write), to preview the active "追加" state. Remove before ship.
   const handleAddMockSearchResult = useCallback(() => {
     const mockProfile: FriendSearchProfile = {
       createdAt: new Date().toISOString(),
-      displayName: 'モック検索結果',
+      displayName: t('addFriend.debug.mockSearchResultName'),
       iconId: 'woman',
       id: `mock-result-${Date.now()}`,
       userId: `mock_result_${Date.now()}`,
     };
 
     setResults((currentResults) => [mockProfile, ...currentResults]);
-  }, []);
+  }, [t]);
 
   const renderItem: ListRenderItem<FriendSearchProfile> = ({ item }) => {
-    const isFriend = friendProfileIds.has(item.id);
+    const isFriend = acceptedProfileIds.has(item.id);
+    const isRequestSent = outgoingPendingProfileIds.has(item.id);
+    const isIncomingRequest = incomingPendingRelationByProfileId.has(item.id);
     const isAdding = addingProfileId === item.id;
+    const isDisabled = isFriend || isRequestSent || isAdding;
 
     return (
       <View style={styles.resultCard}>
@@ -194,19 +274,29 @@ export default function AddFriendScreen() {
 
         <Pressable
           accessibilityRole="button"
-          disabled={isFriend || isAdding}
+          disabled={isDisabled}
           onPress={() => handleAddFriend(item)}
           style={({ pressed }) => [
             styles.addButton,
             pressed && styles.buttonPressed,
-            (isFriend || isAdding) && styles.addButtonDisabled,
+            isDisabled && styles.addButtonDisabled,
           ]}
         >
           {isFriend ? (
-            <Text style={styles.addButtonText}>追加済み</Text>
+            <Text style={styles.addButtonText}>
+              {t('addFriend.buttonStates.friend')}
+            </Text>
+          ) : isRequestSent ? (
+            <Text style={styles.addButtonText}>
+              {t('addFriend.buttonStates.requestSent')}
+            </Text>
           ) : (
             <LoadingButtonContent
-              label="追加"
+              label={
+                isIncomingRequest
+                  ? t('addFriend.buttonStates.accept')
+                  : t('addFriend.buttonStates.sendRequest')
+              }
               loading={isAdding}
               loadingLabel=""
               textStyle={styles.addButtonText}
@@ -223,7 +313,7 @@ export default function AddFriendScreen() {
       <View style={styles.screen}>
         <View style={styles.header}>
           <Pressable
-            accessibilityLabel="友達一覧に戻る"
+            accessibilityLabel={t('addFriend.backToFriendsAccessibilityLabel')}
             accessibilityRole="button"
             hitSlop={12}
             onPress={() => router.replace('/friends')}
@@ -236,7 +326,7 @@ export default function AddFriendScreen() {
               type="monochrome"
             />
           </Pressable>
-          <Text style={styles.title}>友達を追加</Text>
+          <Text style={styles.title}>{t('addFriend.title')}</Text>
         </View>
 
         <View style={styles.content}>
@@ -251,7 +341,7 @@ export default function AddFriendScreen() {
               ListEmptyComponent={
                 <View style={styles.emptyBox}>
                   <Text style={styles.emptyText}>
-                    友達に追加したいユーザーを検索してください。
+                    {t('addFriend.emptyText')}
                   </Text>
                 </View>
               }
@@ -265,7 +355,7 @@ export default function AddFriendScreen() {
                         onPress={handleAddMockExistingFriend}
                       >
                         <Text style={styles.debugToggleText}>
-                          [DEBUG] +既存友達
+                          {t('addFriend.debug.addExistingFriend')}
                         </Text>
                       </Pressable>
 
@@ -274,14 +364,14 @@ export default function AddFriendScreen() {
                         onPress={handleAddMockSearchResult}
                       >
                         <Text style={styles.debugToggleText}>
-                          [DEBUG] +検索結果
+                          {t('addFriend.debug.addSearchResult')}
                         </Text>
                       </Pressable>
                     </View>
                   )}
 
                   <Text style={styles.description}>
-                    ユーザーIDで検索できます。
+                    {t('addFriend.description')}
                   </Text>
 
                   <TextInput
@@ -290,7 +380,7 @@ export default function AddFriendScreen() {
                     editable={!isSearching}
                     onChangeText={setQuery}
                     onSubmitEditing={handleSearch}
-                    placeholder="ユーザーID"
+                    placeholder={t('addFriend.searchPlaceholder')}
                     placeholderTextColor="#a3a3a3"
                     returnKeyType="search"
                     style={styles.input}
@@ -308,9 +398,9 @@ export default function AddFriendScreen() {
                     ]}
                   >
                     <LoadingButtonContent
-                      label="検索"
+                      label={t('addFriend.searchButton')}
                       loading={isSearching}
-                      loadingLabel="検索中..."
+                      loadingLabel={t('addFriend.searching')}
                       textStyle={styles.searchButtonText}
                       tone="light"
                     />

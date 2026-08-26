@@ -1,5 +1,9 @@
+import { useTranslation } from 'react-i18next';
+
 import { ScreenPlaceholder } from '@/components/screen-placeholder';
 
 export default function SignupScreen() {
-  return <ScreenPlaceholder title="新規登録画面" />;
+  const { t } = useTranslation();
+
+  return <ScreenPlaceholder title={t('signup.title')} />;
 }

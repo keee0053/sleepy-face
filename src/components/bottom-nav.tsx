@@ -1,34 +1,35 @@
 import { router, type Href } from 'expo-router';
 import { SymbolView, type SymbolViewProps } from 'expo-symbols';
+import { useTranslation } from 'react-i18next';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 export type BottomNavRoute = '/alarms' | '/home' | '/friends' | '/profile';
 
 type BottomNavTab = {
   icon: SymbolViewProps['name'];
-  label: string;
+  labelKey: string;
   route: BottomNavRoute;
 };
 
 const BOTTOM_NAV_TABS: BottomNavTab[] = [
   {
     icon: { ios: 'alarm', android: 'alarm', web: 'alarm' },
-    label: 'アラーム',
+    labelKey: 'bottomNav.alarms',
     route: '/alarms',
   },
   {
     icon: { ios: 'house', android: 'home', web: 'home' },
-    label: 'ホーム',
+    labelKey: 'bottomNav.home',
     route: '/home',
   },
   {
     icon: { ios: 'person.2', android: 'group', web: 'group' },
-    label: '友達',
+    labelKey: 'bottomNav.friends',
     route: '/friends',
   },
   {
     icon: { ios: 'gearshape', android: 'settings', web: 'settings' },
-    label: '設定',
+    labelKey: 'bottomNav.settings',
     route: '/profile',
   },
 ];
@@ -38,6 +39,8 @@ type BottomNavProps = {
 };
 
 export function BottomNav({ activeRoute }: BottomNavProps) {
+  const { t } = useTranslation();
+
   return (
     <View style={styles.bottomNav}>
       {BOTTOM_NAV_TABS.map((tab) => {
@@ -47,7 +50,7 @@ export function BottomNav({ activeRoute }: BottomNavProps) {
           <Pressable
             accessibilityRole="button"
             accessibilityState={{ selected: isActive }}
-            key={tab.label}
+            key={tab.labelKey}
             onPress={() => router.navigate(tab.route as Href)}
             style={styles.bottomNavItem}
           >
@@ -63,7 +66,7 @@ export function BottomNav({ activeRoute }: BottomNavProps) {
                 isActive && styles.bottomNavLabelActive,
               ]}
             >
-              {tab.label}
+              {t(tab.labelKey)}
             </Text>
           </Pressable>
         );

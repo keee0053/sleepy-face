@@ -298,6 +298,46 @@ describe('Quiz Question service', () => {
       },
     });
   });
+
+  it('honors a custom required correct answer count within range', () => {
+    const state = quizService.startQuiz({
+      random: sequenceRandom([0, 0, 0]),
+      requiredCorrectAnswerCount: 30,
+    });
+
+    expect(state.requiredCorrectAnswerCount).toBe(30);
+  });
+
+  it('clamps a required correct answer count below the allowed minimum', () => {
+    const state = quizService.startQuiz({
+      random: sequenceRandom([0, 0, 0]),
+      requiredCorrectAnswerCount: 1,
+    });
+
+    expect(state.requiredCorrectAnswerCount).toBe(5);
+  });
+
+  it('clamps a required correct answer count above the allowed maximum', () => {
+    const state = quizService.startQuiz({
+      random: sequenceRandom([0, 0, 0]),
+      requiredCorrectAnswerCount: 999,
+    });
+
+    expect(state.requiredCorrectAnswerCount).toBe(30);
+  });
+
+  it('completes only after reaching a custom required correct answer count', () => {
+    quizService.startQuiz({
+      random: sequenceRandom([0, 0, 0, 0.1, 0.2, 0]),
+      requiredCorrectAnswerCount: 6,
+    });
+
+    expect(quizService.submitQuizAnswer('20')).toMatchObject({
+      correctAnswerCount: 1,
+      requiredCorrectAnswerCount: 6,
+      status: 'active',
+    });
+  });
 });
 
 describe('recordQuizFailurePhoto', () => {

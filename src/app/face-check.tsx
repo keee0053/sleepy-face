@@ -1,6 +1,7 @@
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Pressable,
   SafeAreaView,
@@ -15,7 +16,10 @@ import {
   MAX_BAD_PHOTO_ATTEMPTS,
   formatRemainingTime,
 } from '@/components/wake-challenge-ui';
-import { stopRingingAlarm } from '@/services/android-alarm-mechanics';
+import {
+  getRingingAlarmState,
+  stopRingingAlarm,
+} from '@/services/android-alarm-mechanics';
 import {
   getAlarmTimerState,
   pauseTimer,
@@ -33,15 +37,16 @@ import {
 } from '@/services/wakeChallenge';
 import { getNextBadPhotoAttemptCount } from '@/services/wake-challenge-rules';
 
-function getErrorMessage(error: unknown) {
+function getErrorMessage(error: unknown, t: (key: string) => string) {
   if (error instanceof Error) {
     return error.message;
   }
 
-  return '処理に失敗しました。';
+  return t('faceCheck.errors.processingFailed');
 }
 
 export default function FaceCheckScreen() {
+  const { t } = useTranslation();
   const params = useLocalSearchParams<{
     alarmId?: string;
     badPhotoAttempts?: string;
@@ -50,7 +55,7 @@ export default function FaceCheckScreen() {
   const timer = useAlarmTimer();
   const [permission, requestPermission] = useCameraPermissions();
   const [isCameraOpen, setIsCameraOpen] = useState(false);
-  const [message, setMessage] = useState('顔が写るように撮影してください。');
+  const [message, setMessage] = useState(t('faceCheck.messages.initial'));
   const [isBusy, setIsBusy] = useState(false);
   const [isOpeningCamera, setIsOpeningCamera] = useState(false);
   const badPhotoAttempts = Number(params.badPhotoAttempts ?? '0') || 0;
@@ -74,6 +79,64 @@ export default function FaceCheckScreen() {
     }
   }, [timer?.status]);
 
+  useEffect(() => {
+    let isActive = true;
+
+    async function checkForActiveTimerOrRingingAlarm() {
+      const currentStatus = getAlarmTimerState()?.status;
+
+      if (currentStatus === 'running' || currentStatus === 'paused') {
+        return;
+      }
+
+      // Face Check has no authoritative Alarm start time of its own -- it always relies on
+      // Ringing having just (re)started the timer before navigating here. If this screen is
+      // instead entered directly (e.g. a dev JS reload restoring straight to this route, or
+      // the OS resuming the app on this route), the JS timer alone can't be trusted. Ask the
+      // native side whether an Alarm is genuinely still ringing (it can be out of sync with
+      // the JS timer) before deciding where to go: if it errors, treat that as "unknown" and
+      // stay on the safe side rather than risk stranding a genuinely ringing Alarm with no
+      // way to stop it.
+      const isAlarmActuallyRinging = await getRingingAlarmState()
+        .then((state) => state !== null)
+        .catch(() => true);
+
+      if (!isActive) {
+        return;
+      }
+
+      if (!isAlarmActuallyRinging) {
+        router.replace('/home');
+        return;
+      }
+
+      // An Alarm really is still ringing -- bounce back to Ringing so its own
+      // self-healing logic (see startRingingTimerIfNeeded) can re-establish an
+      // authoritative timer, instead of either sitting on a dead countdown forever or
+      // wrongly treating stale leftover timer state as an instant failure.
+      router.replace({
+        pathname: '/ringing',
+        params: { alarmId: params.alarmId ?? '' },
+      });
+    }
+
+    // Deferred a tick, same as Ringing's own refreshRingingState effect: navigating from
+    // an effect that can resolve on the very first tick after mount can otherwise fire
+    // before React has fully committed this screen, which triggers a "state update on a
+    // component that hasn't mounted yet" warning.
+    const timeout = setTimeout(() => {
+      checkForActiveTimerOrRingingAlarm();
+    }, 0);
+
+    return () => {
+      isActive = false;
+      clearTimeout(timeout);
+    };
+    // Mount-only: this is a one-time sanity check for how this screen was entered, not a
+    // reaction to timer changes during the session (those are handled by the effect above).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   async function openCamera() {
     if (isOpeningCamera) {
       return;
@@ -94,13 +157,13 @@ export default function FaceCheckScreen() {
         const nextPermission = await requestPermission();
 
         if (!nextPermission.granted) {
-          setMessage('カメラ権限が必要です。');
+          setMessage(t('faceCheck.messages.cameraPermissionRequired'));
           return;
         }
       }
 
       setIsCameraOpen(true);
-      setMessage('写真を撮影してください。');
+      setMessage(t('faceCheck.messages.readyToCapture'));
     } finally {
       setIsOpeningCamera(false);
     }
@@ -166,7 +229,7 @@ export default function FaceCheckScreen() {
     } catch (error) {
       resumeTimer();
       setIsCameraOpen(false);
-      setMessage(getErrorMessage(error));
+      setMessage(getErrorMessage(error, t));
     } finally {
       setIsBusy(false);
     }
@@ -206,7 +269,9 @@ export default function FaceCheckScreen() {
       >
         <View style={styles.timerPill}>
           <Text style={styles.timerPillText}>
-            あと {formatRemainingTime(timer)}
+            {t('faceCheck.timerRemaining', {
+              time: formatRemainingTime(timer),
+            })}
           </Text>
         </View>
 
@@ -223,10 +288,13 @@ export default function FaceCheckScreen() {
           </View>
 
           <View style={styles.copy}>
-            <Text style={styles.title}>顔写真を撮影</Text>
+            <Text style={styles.title}>{t('faceCheck.title')}</Text>
             <Text style={styles.caption}>{message}</Text>
             <Text style={styles.attempts}>
-              失敗 {badPhotoAttempts}/{MAX_BAD_PHOTO_ATTEMPTS}
+              {t('faceCheck.attempts', {
+                count: badPhotoAttempts,
+                max: MAX_BAD_PHOTO_ATTEMPTS,
+              })}
             </Text>
           </View>
         </View>
@@ -242,9 +310,9 @@ export default function FaceCheckScreen() {
           ]}
         >
           <LoadingButtonContent
-            label="カメラを起動"
+            label={t('faceCheck.openCameraButton')}
             loading={isOpeningCamera}
-            loadingLabel="起動中..."
+            loadingLabel={t('faceCheck.openingCamera')}
             textStyle={styles.buttonText}
           />
         </Pressable>

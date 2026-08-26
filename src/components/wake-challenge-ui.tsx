@@ -1,9 +1,10 @@
+import { useTranslation } from 'react-i18next';
 import { Pressable, StyleSheet } from 'react-native';
 
 import { LoadingButtonContent } from '@/components/loading';
 import type { AlarmTimerState } from '@/services/alarm-timer';
 
-export const ALARM_TIMER_SECONDS = 60;
+export const ALARM_TIMER_SECONDS = 120;
 export const MAX_BAD_PHOTO_ATTEMPTS = 3;
 
 export function getRemainingMs(timer: AlarmTimerState | null): number {
@@ -31,10 +32,11 @@ export function ActionButton({
   disabled,
   label,
   loading,
-  loadingLabel = '処理中...',
+  loadingLabel,
   onPress,
   variant = 'primary',
 }: ActionButtonProps) {
+  const { t } = useTranslation();
   const isPrimary = variant === 'primary';
 
   return (
@@ -52,7 +54,7 @@ export function ActionButton({
       <LoadingButtonContent
         label={label}
         loading={loading ?? false}
-        loadingLabel={loadingLabel}
+        loadingLabel={loadingLabel ?? t('common.processing')}
         textStyle={[
           styles.buttonText,
           isPrimary ? styles.primaryButtonText : styles.secondaryButtonText,

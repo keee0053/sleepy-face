@@ -1,6 +1,7 @@
 import { router } from 'expo-router';
 import { SymbolView } from 'expo-symbols';
 import { useCallback, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   FlatList,
   Pressable,
@@ -14,9 +15,10 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { LoadingButtonContent } from '@/components/loading';
+import { QuestionCountStepper } from '@/components/question-count-stepper';
 import {
   ALARM_SOUND_IDS,
-  ALARM_SOUND_LABELS,
+  getAlarmSoundLabel,
   DEFAULT_ALARM_SOUND_ID,
   type AlarmSoundId,
 } from '@/constants/alarm-sounds';
@@ -25,6 +27,7 @@ import { ensureAlarmPermissions } from '@/services/android-alarm-mechanics';
 import {
   AlarmServiceError,
   createSavedAlarm,
+  DEFAULT_QUIZ_QUESTION_COUNT,
   type Weekday,
 } from '@/services/alarm';
 
@@ -35,46 +38,57 @@ const WHEEL_REPEAT_COUNT = 80;
 const WHEEL_START_REPEAT = Math.floor(WHEEL_REPEAT_COUNT / 2);
 const HOURS = Array.from({ length: 24 }, (_, index) => index);
 const MINUTES = Array.from({ length: 60 }, (_, index) => index);
-const WEEKDAY_OPTIONS: { label: string; value: Weekday }[] = [
-  { label: '月', value: 1 },
-  { label: '火', value: 2 },
-  { label: '水', value: 3 },
-  { label: '木', value: 4 },
-  { label: '金', value: 5 },
-  { label: '土', value: 6 },
-  { label: '日', value: 0 },
-];
+const WEEKDAY_ORDER: Weekday[] = [1, 2, 3, 4, 5, 6, 0];
+const WEEKDAY_KEYS: Record<Weekday, string> = {
+  0: 'sun',
+  1: 'mon',
+  2: 'tue',
+  3: 'wed',
+  4: 'thu',
+  5: 'fri',
+  6: 'sat',
+};
 
 function formatNumber(value: number): string {
   return String(value).padStart(2, '0');
 }
 
-function getCreateAlarmErrorMessage(error: unknown): string {
+function getCreateAlarmErrorMessage(
+  error: unknown,
+  t: (key: string) => string,
+): string {
   if (error instanceof AlarmServiceError) {
     if (error.code === 'weekday_already_used') {
-      return '選択した曜日には、すでに別のアラームがあります。';
+      return t('addAlarm.errors.weekdayAlreadyUsed');
     }
 
     if (error.code === 'invalid_alarm_input') {
-      return '時刻と曜日を確認してください。';
+      return t('addAlarm.errors.invalidInput');
     }
 
     if (error.code === 'alarm_scheduling_failed') {
-      return 'アラームを端末に登録できませんでした。';
+      return t('addAlarm.errors.schedulingFailed');
     }
   }
 
-  return 'アラームを保存できませんでした。';
+  return t('addAlarm.errors.saveFailed');
 }
 
 function getPermissionDeniedMessage(
-  reason: 'exact_alarm_unavailable' | 'notification_permission_denied',
+  reason:
+    | 'exact_alarm_unavailable'
+    | 'notification_permission_denied'
+    | 'battery_optimization_enabled',
+  t: (key: string) => string,
 ): string {
-  if (reason === 'notification_permission_denied') {
-    return '通知の権限が必要です。許可してからもう一度お試しください。';
+  switch (reason) {
+    case 'notification_permission_denied':
+      return t('common.errors.notificationPermissionRequired');
+    case 'battery_optimization_enabled':
+      return t('common.errors.batteryOptimizationEnabled');
+    case 'exact_alarm_unavailable':
+      return t('common.errors.alarmPermissionRequired');
   }
-
-  return '「アラームとリマインダー」の権限を許可してから、もう一度お試しください。';
 }
 
 function TimeWheel({
@@ -201,12 +215,24 @@ function TimeWheel({
 }
 
 export default function AddAlarmScreen() {
+  const { t } = useTranslation();
+  const weekdayOptions = useMemo<{ label: string; value: Weekday }[]>(
+    () =>
+      WEEKDAY_ORDER.map((value) => ({
+        label: t(`common.weekdaysShort.${WEEKDAY_KEYS[value]}`),
+        value,
+      })),
+    [t],
+  );
   const [hour, setHour] = useState(7);
   const [minute, setMinute] = useState(0);
   const [selectedWeekdays, setSelectedWeekdays] = useState<Weekday[]>([
     1, 2, 3, 4, 5,
   ]);
   const [soundId, setSoundId] = useState<AlarmSoundId>(DEFAULT_ALARM_SOUND_ID);
+  const [questionCount, setQuestionCount] = useState(
+    DEFAULT_QUIZ_QUESTION_COUNT,
+  );
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -221,7 +247,7 @@ export default function AddAlarmScreen() {
 
   const handleSave = useCallback(async () => {
     if (selectedWeekdays.length === 0) {
-      setErrorMessage('曜日を1つ以上選択してください。');
+      setErrorMessage(t('addAlarm.errors.noWeekdaySelected'));
       return;
     }
 
@@ -232,30 +258,31 @@ export default function AddAlarmScreen() {
       const permissionResult = await ensureAlarmPermissions();
 
       if (!permissionResult.granted) {
-        setErrorMessage(getPermissionDeniedMessage(permissionResult.reason));
+        setErrorMessage(getPermissionDeniedMessage(permissionResult.reason, t));
         return;
       }
 
       await createSavedAlarm({
         hour,
         minute,
+        questionCount,
         soundId,
         weekdays: selectedWeekdays,
       });
       router.replace('/alarms');
     } catch (error) {
-      setErrorMessage(getCreateAlarmErrorMessage(error));
+      setErrorMessage(getCreateAlarmErrorMessage(error, t));
     } finally {
       setIsSaving(false);
     }
-  }, [hour, minute, selectedWeekdays, soundId]);
+  }, [hour, minute, questionCount, selectedWeekdays, soundId, t]);
 
   return (
     <SafeAreaView edges={['top', 'bottom']} style={styles.safeArea}>
       <View style={styles.screen}>
         <View style={styles.header}>
           <Pressable
-            accessibilityLabel="アラーム一覧に戻る"
+            accessibilityLabel={t('addAlarm.backToAlarmsAccessibilityLabel')}
             accessibilityRole="button"
             hitSlop={12}
             onPress={() => router.replace('/alarms')}
@@ -268,7 +295,7 @@ export default function AddAlarmScreen() {
               type="monochrome"
             />
           </Pressable>
-          <Text style={styles.title}>アラームを追加</Text>
+          <Text style={styles.title}>{t('addAlarm.title')}</Text>
         </View>
 
         <View style={styles.timeSection}>
@@ -282,9 +309,9 @@ export default function AddAlarmScreen() {
           style={styles.scroll}
         >
           <View style={styles.weekdaySection}>
-            <Text style={styles.weekdayTitle}>繰り返し</Text>
+            <Text style={styles.weekdayTitle}>{t('addAlarm.repeat')}</Text>
             <View style={styles.weekdayRow}>
-              {WEEKDAY_OPTIONS.map((weekday) => {
+              {weekdayOptions.map((weekday) => {
                 const isSelected = selectedWeekdays.includes(weekday.value);
 
                 return (
@@ -312,7 +339,7 @@ export default function AddAlarmScreen() {
           </View>
 
           <View style={styles.soundSection}>
-            <Text style={styles.weekdayTitle}>アラーム音</Text>
+            <Text style={styles.weekdayTitle}>{t('addAlarm.alarmSound')}</Text>
             <View style={styles.soundList}>
               {ALARM_SOUND_IDS.map((id) => {
                 const isSelected = id === soundId;
@@ -337,12 +364,22 @@ export default function AddAlarmScreen() {
                         isSelected && styles.soundOptionTextSelected,
                       ]}
                     >
-                      {ALARM_SOUND_LABELS[id]}
+                      {getAlarmSoundLabel(id, t)}
                     </Text>
                   </Pressable>
                 );
               })}
             </View>
+          </View>
+
+          <View style={styles.soundSection}>
+            <Text style={styles.weekdayTitle}>
+              {t('addAlarm.questionCountLabel')}
+            </Text>
+            <QuestionCountStepper
+              onChange={setQuestionCount}
+              value={questionCount}
+            />
           </View>
         </ScrollView>
 
@@ -361,9 +398,9 @@ export default function AddAlarmScreen() {
             ]}
           >
             <LoadingButtonContent
-              label="保存"
+              label={t('common.save')}
               loading={isSaving}
-              loadingLabel="保存中..."
+              loadingLabel={t('common.saving')}
               textStyle={styles.saveButtonText}
               tone="light"
             />

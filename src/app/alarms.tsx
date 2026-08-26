@@ -1,5 +1,6 @@
 import { router } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   FlatList,
   Pressable,
@@ -12,9 +13,10 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { BottomNav } from '@/components/bottom-nav';
 import { AlarmListLoadingSkeleton } from '@/components/loading-skeletons';
+import { QuestionCountStepper } from '@/components/question-count-stepper';
 import {
   ALARM_SOUND_IDS,
-  ALARM_SOUND_LABELS,
+  getAlarmSoundLabel,
   DEFAULT_ALARM_SOUND_ID,
   type AlarmSoundId,
 } from '@/constants/alarm-sounds';
@@ -33,15 +35,19 @@ import {
   scheduleTestAlarm,
 } from '@/services/android-alarm-mechanics';
 import { getDevMode } from '@/services/dev-mode';
+import {
+  getDevQuizQuestionCount,
+  setDevQuizQuestionCount,
+} from '@/services/dev-quiz-settings';
 
-const WEEKDAY_LABELS: Record<Weekday, string> = {
-  0: '日',
-  1: '月',
-  2: '火',
-  3: '水',
-  4: '木',
-  5: '金',
-  6: '土',
+const WEEKDAY_KEYS: Record<Weekday, string> = {
+  0: 'sun',
+  1: 'mon',
+  2: 'tue',
+  3: 'wed',
+  4: 'thu',
+  5: 'fri',
+  6: 'sat',
 };
 const DISPLAY_WEEKDAYS: Weekday[] = [1, 2, 3, 4, 5, 6, 0];
 
@@ -51,49 +57,63 @@ function formatTime(alarm: SavedAlarm): string {
   ).padStart(2, '0')}`;
 }
 
-function formatWeekdays(weekdays: Weekday[]): string {
+function formatWeekdays(
+  weekdays: Weekday[],
+  t: (key: string) => string,
+): string {
   if (weekdays.length === 0) {
-    return '繰り返しなし';
+    return t('alarms.noRepeat');
   }
 
   return DISPLAY_WEEKDAYS.filter((weekday) => weekdays.includes(weekday))
-    .map((weekday) => WEEKDAY_LABELS[weekday])
+    .map((weekday) => t(`common.weekdaysShort.${WEEKDAY_KEYS[weekday]}`))
     .join(' ');
 }
 
-function getAlarmErrorMessage(error: unknown): string {
+function getAlarmErrorMessage(
+  error: unknown,
+  t: (key: string) => string,
+): string {
   if (error instanceof AlarmServiceError) {
     switch (error.code) {
       case 'saved_alarm_not_found':
-        return 'アラームが見つかりませんでした。';
+        return t('alarms.errors.notFound');
       case 'storage_read_failed':
       case 'storage_parse_failed':
-        return 'アラーム一覧を読み込めませんでした。';
+        return t('alarms.errors.loadFailed');
       case 'storage_write_failed':
-        return 'アラームの状態を保存できませんでした。';
+        return t('alarms.errors.saveStateFailed');
       case 'invalid_alarm_input':
       case 'storage_clear_failed':
       case 'weekday_already_used':
-        return 'アラーム情報を更新できませんでした。';
+        return t('alarms.errors.updateFailed');
       case 'alarm_scheduling_failed':
-        return 'アラームを端末に登録できませんでした。';
+        return t('alarms.errors.schedulingFailed');
     }
   }
 
-  return 'アラーム情報を更新できませんでした。';
+  return t('alarms.errors.updateFailed');
 }
 
 function getPermissionDeniedMessage(
-  reason: 'exact_alarm_unavailable' | 'notification_permission_denied',
+  reason:
+    | 'exact_alarm_unavailable'
+    | 'notification_permission_denied'
+    | 'battery_optimization_enabled',
+  t: (key: string) => string,
 ): string {
-  if (reason === 'notification_permission_denied') {
-    return '通知の権限が必要です。許可してからもう一度お試しください。';
+  switch (reason) {
+    case 'notification_permission_denied':
+      return t('common.errors.notificationPermissionRequired');
+    case 'battery_optimization_enabled':
+      return t('common.errors.batteryOptimizationEnabled');
+    case 'exact_alarm_unavailable':
+      return t('common.errors.alarmPermissionRequired');
   }
-
-  return '「アラームとリマインダー」の権限を許可してから、もう一度お試しください。';
 }
 
 export default function AlarmsScreen() {
+  const { t } = useTranslation();
   const [alarms, setAlarms] = useState<SavedAlarm[]>([]);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
@@ -104,6 +124,7 @@ export default function AlarmsScreen() {
   const [devTestSoundId, setDevTestSoundId] = useState<AlarmSoundId>(
     DEFAULT_ALARM_SOUND_ID,
   );
+  const [devTestQuestionCount, setDevTestQuestionCount] = useState(5);
 
   useEffect(() => {
     let isActive = true;
@@ -114,10 +135,24 @@ export default function AlarmsScreen() {
       }
     });
 
+    getDevQuizQuestionCount().then((questionCount) => {
+      if (isActive) {
+        setDevTestQuestionCount(questionCount);
+      }
+    });
+
     return () => {
       isActive = false;
     };
   }, []);
+
+  const handleChangeDevTestQuestionCount = useCallback(
+    (nextQuestionCount: number) => {
+      setDevTestQuestionCount(nextQuestionCount);
+      setDevQuizQuestionCount(nextQuestionCount).catch(() => {});
+    },
+    [],
+  );
 
   const loadAlarms = useCallback(async () => {
     setErrorMessage(null);
@@ -126,11 +161,11 @@ export default function AlarmsScreen() {
     try {
       setAlarms(await listSavedAlarms());
     } catch (error) {
-      setErrorMessage(getAlarmErrorMessage(error));
+      setErrorMessage(getAlarmErrorMessage(error, t));
     } finally {
       setIsRefreshing(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     let isActive = true;
@@ -143,7 +178,7 @@ export default function AlarmsScreen() {
       })
       .catch((error: unknown) => {
         if (isActive) {
-          setErrorMessage(getAlarmErrorMessage(error));
+          setErrorMessage(getAlarmErrorMessage(error, t));
         }
       })
       .finally(() => {
@@ -155,7 +190,7 @@ export default function AlarmsScreen() {
     return () => {
       isActive = false;
     };
-  }, []);
+  }, [t]);
 
   const handleToggleAlarm = useCallback(
     async (alarm: SavedAlarm, isEnabled: boolean) => {
@@ -178,7 +213,7 @@ export default function AlarmsScreen() {
           if (!permissionResult.granted) {
             setAlarms(previousAlarms);
             setErrorMessage(
-              getPermissionDeniedMessage(permissionResult.reason),
+              getPermissionDeniedMessage(permissionResult.reason, t),
             );
             return;
           }
@@ -192,12 +227,12 @@ export default function AlarmsScreen() {
         );
       } catch (error) {
         setAlarms(previousAlarms);
-        setErrorMessage(getAlarmErrorMessage(error));
+        setErrorMessage(getAlarmErrorMessage(error, t));
       } finally {
         setUpdatingAlarmId(null);
       }
     },
-    [alarms],
+    [alarms, t],
   );
 
   const handleFireTestAlarm = useCallback(async () => {
@@ -208,36 +243,39 @@ export default function AlarmsScreen() {
       const permissionResult = await ensureAlarmPermissions();
 
       if (!permissionResult.granted) {
-        setErrorMessage(getPermissionDeniedMessage(permissionResult.reason));
+        setErrorMessage(getPermissionDeniedMessage(permissionResult.reason, t));
         return;
       }
 
       await scheduleTestAlarm(devTestSoundId);
-      setSuccessMessage('20秒後にテストアラームが鳴ります。');
+      setSuccessMessage(t('alarms.testAlarmScheduled'));
     } catch (error) {
       if (error instanceof AndroidAlarmMechanicsError) {
-        setErrorMessage('テストアラームを登録できませんでした。');
+        setErrorMessage(t('alarms.testAlarmFailed'));
         return;
       }
 
-      setErrorMessage(getAlarmErrorMessage(error));
+      setErrorMessage(getAlarmErrorMessage(error, t));
     }
-  }, [devTestSoundId]);
+  }, [devTestSoundId, t]);
 
-  const handleClearFiredToday = useCallback(async (alarmId: string) => {
-    setErrorMessage(null);
+  const handleClearFiredToday = useCallback(
+    async (alarmId: string) => {
+      setErrorMessage(null);
 
-    try {
-      const updatedAlarm = await clearAlarmFiredToday(alarmId);
-      setAlarms((currentAlarms) =>
-        currentAlarms.map((currentAlarm) =>
-          currentAlarm.id === updatedAlarm.id ? updatedAlarm : currentAlarm,
-        ),
-      );
-    } catch (error) {
-      setErrorMessage(getAlarmErrorMessage(error));
-    }
-  }, []);
+      try {
+        const updatedAlarm = await clearAlarmFiredToday(alarmId);
+        setAlarms((currentAlarms) =>
+          currentAlarms.map((currentAlarm) =>
+            currentAlarm.id === updatedAlarm.id ? updatedAlarm : currentAlarm,
+          ),
+        );
+      } catch (error) {
+        setErrorMessage(getAlarmErrorMessage(error, t));
+      }
+    },
+    [t],
+  );
 
   const renderItem: ListRenderItem<SavedAlarm> = ({ item }) => {
     const isUpdating = updatingAlarmId === item.id;
@@ -273,7 +311,7 @@ export default function AlarmsScreen() {
                 !item.isEnabled && styles.alarmTextDisabled,
               ]}
             >
-              {item.isEnabled ? 'ON' : 'OFF'}
+              {item.isEnabled ? t('alarms.status.on') : t('alarms.status.off')}
             </Text>
           </View>
 
@@ -283,13 +321,11 @@ export default function AlarmsScreen() {
               !item.isEnabled && styles.alarmTextDisabled,
             ]}
           >
-            {formatWeekdays(item.weekdays)}
+            {formatWeekdays(item.weekdays, t)}
           </Text>
 
           {alarmWillSkipToday(item) && (
-            <Text style={styles.skipTodayText}>
-              今日は鳴りません。次回は来週鳴ります。
-            </Text>
+            <Text style={styles.skipTodayText}>{t('alarms.skipToday')}</Text>
           )}
 
           {isDevMode && item.lastFiredLocalDay && (
@@ -301,7 +337,9 @@ export default function AlarmsScreen() {
                 void handleClearFiredToday(item.id);
               }}
             >
-              <Text style={styles.debugToggleText}>[DEV] 制限解除</Text>
+              <Text style={styles.debugToggleText}>
+                {t('alarms.devClearFiredToday')}
+              </Text>
             </Pressable>
           )}
         </View>
@@ -335,11 +373,13 @@ export default function AlarmsScreen() {
     <SafeAreaView edges={['top', 'bottom']} style={styles.safeArea}>
       <View style={styles.screen}>
         <View style={styles.header}>
-          <Text style={styles.title}>アラーム</Text>
+          <Text style={styles.title}>{t('alarms.title')}</Text>
 
           {isDevMode && (
             <Pressable accessibilityRole="button" onPress={handleFireTestAlarm}>
-              <Text style={styles.debugToggleText}>[DEV] 20秒後に鳴らす</Text>
+              <Text style={styles.debugToggleText}>
+                {t('alarms.devFireTestAlarm')}
+              </Text>
             </Pressable>
           )}
         </View>
@@ -366,11 +406,23 @@ export default function AlarmsScreen() {
                       isSelected && styles.devSoundOptionTextSelected,
                     ]}
                   >
-                    {ALARM_SOUND_LABELS[id]}
+                    {getAlarmSoundLabel(id, t)}
                   </Text>
                 </Pressable>
               );
             })}
+          </View>
+        )}
+
+        {isDevMode && (
+          <View style={styles.devQuestionCountRow}>
+            <Text style={styles.debugToggleText}>
+              {t('alarms.devQuestionCountLabel')}
+            </Text>
+            <QuestionCountStepper
+              onChange={handleChangeDevTestQuestionCount}
+              value={devTestQuestionCount}
+            />
           </View>
         )}
 
@@ -389,9 +441,11 @@ export default function AlarmsScreen() {
               keyExtractor={(item) => item.id}
               ListEmptyComponent={
                 <View style={styles.emptyBox}>
-                  <Text style={styles.emptyTitle}>アラームがありません</Text>
+                  <Text style={styles.emptyTitle}>
+                    {t('alarms.empty.title')}
+                  </Text>
                   <Text style={styles.emptyText}>
-                    右下のプラスボタンから新しいアラームを作成できます。
+                    {t('alarms.empty.description')}
                   </Text>
                 </View>
               }
@@ -404,7 +458,7 @@ export default function AlarmsScreen() {
         </View>
 
         <Pressable
-          accessibilityLabel="アラームを追加"
+          accessibilityLabel={t('alarms.addAlarmAccessibilityLabel')}
           accessibilityRole="button"
           onPress={() => router.push('/add-alarm')}
           style={({ pressed }) => [styles.fab, pressed && styles.fabPressed]}
@@ -450,6 +504,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 6,
+    paddingHorizontal: 16,
+    paddingTop: 10,
+  },
+  devQuestionCountRow: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 10,
     paddingHorizontal: 16,
     paddingTop: 10,
   },

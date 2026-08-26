@@ -1,5 +1,6 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Animated,
   Easing,
@@ -28,7 +29,7 @@ import {
 } from '@/services/android-alarm-mechanics';
 import { startWakeChallengeAttempt } from '@/services/wake-challenge-attempt';
 
-function getErrorMessage(error: unknown): string {
+function getErrorMessage(error: unknown, t: (key: string) => string): string {
   if (error instanceof AndroidAlarmMechanicsError) {
     return `${error.code}: ${error.message}`;
   }
@@ -37,7 +38,7 @@ function getErrorMessage(error: unknown): string {
     return error.message;
   }
 
-  return 'アラームの確認に失敗しました。';
+  return t('ringing.errors.checkFailed');
 }
 
 function getStartedAt(
@@ -72,6 +73,7 @@ function formatWakeUpTime(startedAt: string): string {
 }
 
 export default function RingingScreen() {
+  const { t } = useTranslation();
   const params = useLocalSearchParams<{
     alarmId?: string;
     startedAt?: string;
@@ -140,7 +142,7 @@ export default function RingingScreen() {
             return;
           }
 
-          setErrorMessage(getErrorMessage(error));
+          setErrorMessage(getErrorMessage(error, t));
 
           startRingingTimerIfNeeded(
             params.startedAt ?? new Date().toISOString(),
@@ -155,7 +157,7 @@ export default function RingingScreen() {
       isActive = false;
       clearTimeout(timeout);
     };
-  }, [params.startedAt]);
+  }, [params.startedAt, t]);
 
   // Edge-triggered on purpose: alarm-timer.ts is a module-level singleton, so the very
   // first status this screen observes can be a stale 'expired' left over from a
@@ -198,7 +200,7 @@ export default function RingingScreen() {
         },
       });
     } catch (error) {
-      setErrorMessage(getErrorMessage(error));
+      setErrorMessage(getErrorMessage(error, t));
     } finally {
       setIsStarting(false);
     }
@@ -216,16 +218,14 @@ export default function RingingScreen() {
       >
         <View style={styles.timerPill}>
           <Text style={styles.timerPillText}>
-            あと {formatRemainingTime(timer)}
+            {t('ringing.timerRemaining', { time: formatRemainingTime(timer) })}
           </Text>
         </View>
 
         <View style={styles.content}>
           <Text style={styles.wakeUpTime}>{wakeUpTime}</Text>
-          <Text style={styles.greeting}>おはよう！</Text>
-          <Text style={styles.caption}>
-            写真を撮影するとアラームを止められます
-          </Text>
+          <Text style={styles.greeting}>{t('ringing.greeting')}</Text>
+          <Text style={styles.caption}>{t('ringing.caption')}</Text>
 
           <Animated.View
             style={[styles.cameraRing, { transform: [{ scale: pulse }] }]}
@@ -252,7 +252,7 @@ export default function RingingScreen() {
           ]}
         >
           <Text style={styles.buttonText}>
-            {isStarting ? '起動中...' : '顔写真を撮る'}
+            {isStarting ? t('ringing.starting') : t('ringing.startButton')}
           </Text>
         </Pressable>
 

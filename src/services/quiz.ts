@@ -16,7 +16,7 @@ export type QuizState =
       question: PublicQuizQuestion;
       correctAnswerCount: number;
       attemptNumber: number;
-      requiredCorrectAnswerCount: 5;
+      requiredCorrectAnswerCount: number;
       lastAnswerCorrect: boolean | null;
     }
   | {
@@ -24,7 +24,7 @@ export type QuizState =
       question: null;
       correctAnswerCount: number;
       attemptNumber: number;
-      requiredCorrectAnswerCount: 5;
+      requiredCorrectAnswerCount: number;
       lastAnswerCorrect: boolean;
     };
 
@@ -48,6 +48,7 @@ type ActiveQuizSession = {
   question: QuizQuestion;
   correctAnswerCount: number;
   attemptNumber: number;
+  requiredCorrectAnswerCount: number;
   random: () => number;
   lastAnswerCorrect: boolean | null;
 };
@@ -56,6 +57,7 @@ type CompletedQuizSession = {
   status: 'completed';
   correctAnswerCount: number;
   attemptNumber: number;
+  requiredCorrectAnswerCount: number;
   lastAnswerCorrect: boolean;
 };
 
@@ -63,11 +65,25 @@ type QuizSession = ActiveQuizSession | CompletedQuizSession;
 
 type StartQuizOptions = {
   random?: () => number;
+  requiredCorrectAnswerCount?: number;
 };
 
-const REQUIRED_CORRECT_ANSWER_COUNT = 5;
+export const MIN_REQUIRED_CORRECT_ANSWER_COUNT = 5;
+export const MAX_REQUIRED_CORRECT_ANSWER_COUNT = 30;
+const DEFAULT_REQUIRED_CORRECT_ANSWER_COUNT = 5;
 const MIN_TWO_DIGIT_NUMBER = 10;
 const TWO_DIGIT_NUMBER_RANGE = 90;
+
+function clampRequiredCorrectAnswerCount(value: number | undefined): number {
+  if (value === undefined || !Number.isInteger(value)) {
+    return DEFAULT_REQUIRED_CORRECT_ANSWER_COUNT;
+  }
+
+  return Math.min(
+    Math.max(value, MIN_REQUIRED_CORRECT_ANSWER_COUNT),
+    MAX_REQUIRED_CORRECT_ANSWER_COUNT,
+  );
+}
 
 let quizSession: QuizSession | null = null;
 
@@ -147,7 +163,7 @@ function toPublicQuizState(session: QuizSession): QuizState {
       correctAnswerCount: session.correctAnswerCount,
       lastAnswerCorrect: session.lastAnswerCorrect,
       question: null,
-      requiredCorrectAnswerCount: REQUIRED_CORRECT_ANSWER_COUNT,
+      requiredCorrectAnswerCount: session.requiredCorrectAnswerCount,
       status: 'completed',
     };
   }
@@ -160,7 +176,7 @@ function toPublicQuizState(session: QuizSession): QuizState {
       id: session.question.id,
       prompt: session.question.prompt,
     },
-    requiredCorrectAnswerCount: REQUIRED_CORRECT_ANSWER_COUNT,
+    requiredCorrectAnswerCount: session.requiredCorrectAnswerCount,
     status: 'active',
   };
 }
@@ -206,6 +222,9 @@ export function startQuiz(options: StartQuizOptions = {}): QuizState {
     lastAnswerCorrect: null,
     question: generateQuizQuestion(1, random),
     random,
+    requiredCorrectAnswerCount: clampRequiredCorrectAnswerCount(
+      options.requiredCorrectAnswerCount,
+    ),
     status: 'active',
   };
 
@@ -236,11 +255,12 @@ export function submitQuizAnswer(answerText: string): QuizState {
   const correctAnswerCount =
     quizSession.correctAnswerCount + (isCorrect ? 1 : 0);
 
-  if (correctAnswerCount >= REQUIRED_CORRECT_ANSWER_COUNT) {
+  if (correctAnswerCount >= quizSession.requiredCorrectAnswerCount) {
     quizSession = {
       attemptNumber: quizSession.attemptNumber,
       correctAnswerCount,
       lastAnswerCorrect: true,
+      requiredCorrectAnswerCount: quizSession.requiredCorrectAnswerCount,
       status: 'completed',
     };
 
@@ -259,6 +279,7 @@ export function submitQuizAnswer(answerText: string): QuizState {
       quizSession.random,
     ),
     random: quizSession.random,
+    requiredCorrectAnswerCount: quizSession.requiredCorrectAnswerCount,
     status: 'active',
   };
 

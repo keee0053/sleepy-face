@@ -1,14 +1,26 @@
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { ActionButton, challengeStyles } from '@/components/wake-challenge-ui';
 import { clearWakeChallengeAttempt } from '@/services/wake-challenge-attempt';
+import { recordWakeAttemptOutcome } from '@/services/wake-status';
 
 export default function QuizSuccessScreen() {
+  const { t } = useTranslation();
+  const params = useLocalSearchParams<{ requiredQuestionCount?: string }>();
+
   useEffect(() => {
+    // Read (via recordWakeAttemptOutcome) before clearing -- clearWakeChallengeAttempt
+    // removes the very attempt record it needs to know when the alarm rang.
+    const requiredQuestionCount = params.requiredQuestionCount
+      ? Number(params.requiredQuestionCount)
+      : null;
+
+    recordWakeAttemptOutcome('success', requiredQuestionCount).catch(() => {});
     clearWakeChallengeAttempt().catch(() => {});
-  }, []);
+  }, [params.requiredQuestionCount]);
 
   return (
     <View style={styles.screen}>
@@ -22,14 +34,16 @@ export default function QuizSuccessScreen() {
           </View>
 
           <View style={styles.copy}>
-            <Text style={challengeStyles.lightTitle}>起床成功</Text>
+            <Text style={challengeStyles.lightTitle}>
+              {t('quizSuccess.title')}
+            </Text>
             <Text style={challengeStyles.lightCaption}>
-              写真とクイズを完了しました
+              {t('quizSuccess.caption')}
             </Text>
           </View>
 
           <ActionButton
-            label="ホームへ"
+            label={t('quizSuccess.homeButton')}
             onPress={() => router.replace('/home')}
           />
         </View>

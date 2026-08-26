@@ -1,5 +1,6 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Image, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { LoadingIndicator } from '@/components/loading';
@@ -10,29 +11,39 @@ import { recordQuizFailurePhoto } from '@/services/quiz';
 import { getFailureAccessOutcome } from '@/services/wake-challenge-rules';
 import { clearWakeChallengeAttempt } from '@/services/wake-challenge-attempt';
 import { logWakeChallengeFailure } from '@/services/wake-friends';
+import { recordWakeAttemptOutcome } from '@/services/wake-status';
 
 type UploadStatus = 'checking' | 'failed' | 'uploaded';
 
-function getStatusCopy(status: UploadStatus) {
+function getStatusCopy(status: UploadStatus, t: (key: string) => string) {
   switch (status) {
     case 'checking':
-      return 'クイズが時間切れになりました。写真をアップロードしています…';
+      return t('quizFailurePhoto.status.checking');
     case 'uploaded':
-      return 'クイズが時間切れになりました。この写真を失敗記録として保存しました。';
+      return t('quizFailurePhoto.status.uploaded');
     case 'failed':
-      return 'クイズは時間切れです。写真の保存には失敗しましたが、撮影した写真はこちらです。';
+      return t('quizFailurePhoto.status.failed');
   }
 }
 
 export default function QuizFailurePhotoScreen() {
+  const { t } = useTranslation();
   const params = useLocalSearchParams<{
     localPhotoUri?: string;
+    requiredQuestionCount?: string;
   }>();
   const [uploadStatus, setUploadStatus] = useState<UploadStatus>('checking');
 
   useEffect(() => {
+    // Read (via recordWakeAttemptOutcome) before clearing -- clearWakeChallengeAttempt
+    // removes the very attempt record it needs to know when the alarm rang.
+    const requiredQuestionCount = params.requiredQuestionCount
+      ? Number(params.requiredQuestionCount)
+      : null;
+
+    recordWakeAttemptOutcome('failure', requiredQuestionCount).catch(() => {});
     clearWakeChallengeAttempt().catch(() => {});
-  }, []);
+  }, [params.requiredQuestionCount]);
 
   useEffect(() => {
     let isActive = true;
@@ -81,7 +92,9 @@ export default function QuizFailurePhotoScreen() {
     stopRingingAlarm().catch(() => {});
   }, [failureReason, uploadStatus]);
   const actionLabel =
-    accessOutcome === 'allowed' ? 'フィードへ進む' : 'アラームへ戻る';
+    accessOutcome === 'allowed'
+      ? t('quizFailurePhoto.feedButton')
+      : t('quizFailurePhoto.backToAlarmButton');
 
   return (
     <View style={styles.screen}>
@@ -95,9 +108,11 @@ export default function QuizFailurePhotoScreen() {
           </View>
 
           <View style={styles.copy}>
-            <Text style={challengeStyles.lightTitle}>起床失敗</Text>
+            <Text style={challengeStyles.lightTitle}>
+              {t('quizFailurePhoto.title')}
+            </Text>
             <Text style={challengeStyles.lightCaption}>
-              {getStatusCopy(uploadStatus)}
+              {getStatusCopy(uploadStatus, t)}
             </Text>
           </View>
 
@@ -111,7 +126,7 @@ export default function QuizFailurePhotoScreen() {
               {uploadStatus === 'checking' && (
                 <View style={styles.photoOverlay}>
                   <LoadingIndicator
-                    accessibilityLabel="写真を送信中"
+                    accessibilityLabel={t('quizFailurePhoto.uploadingPhoto')}
                     tone="light"
                   />
                 </View>

@@ -2,15 +2,19 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
   ProfilePhotosServiceError,
+  deleteMyFailurePhoto,
   listMyFailurePhotos,
 } from '../profile-photos';
 
 const mocks = vi.hoisted(() => ({
+  delete: vi.fn(),
   eq: vi.fn(),
   from: vi.fn(),
   getUser: vi.fn(),
   order: vi.fn(),
+  remove: vi.fn(),
   select: vi.fn(),
+  storageFrom: vi.fn(),
 }));
 
 vi.mock('@/lib/supabase', () => ({
@@ -19,6 +23,9 @@ vi.mock('@/lib/supabase', () => ({
       getUser: mocks.getUser,
     },
     from: mocks.from,
+    storage: {
+      from: mocks.storageFrom,
+    },
   },
 }));
 
@@ -101,5 +108,56 @@ describe('profile photos service', () => {
       expectServiceError(error, 'unexpected_error');
       return true;
     });
+  });
+});
+
+describe('deleteMyFailurePhoto', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('deletes the DB row scoped to the viewer, then removes the Storage object', async () => {
+    mockAuthenticatedUser();
+    const eqChain = { eq: mocks.eq };
+    mocks.eq
+      .mockReturnValueOnce(eqChain)
+      .mockResolvedValueOnce({ error: null });
+    mocks.from.mockReturnValue({ delete: vi.fn().mockReturnValue(eqChain) });
+    mocks.storageFrom.mockReturnValue({ remove: mocks.remove });
+    mocks.remove.mockResolvedValue({ error: null });
+
+    await deleteMyFailurePhoto({
+      createdAt: '2026-08-26T00:00:00.000Z',
+      imageUrl:
+        'https://example.supabase.co/storage/v1/object/public/failure-photos/profile-a/123.jpg',
+      photoId: 'photo-1',
+    });
+
+    expect(mocks.from).toHaveBeenCalledWith('photos');
+    expect(mocks.eq).toHaveBeenCalledWith('id', 'photo-1');
+    expect(mocks.eq).toHaveBeenCalledWith('profile_id', 'profile-a');
+    expect(mocks.storageFrom).toHaveBeenCalledWith('failure-photos');
+    expect(mocks.remove).toHaveBeenCalledWith(['profile-a/123.jpg']);
+  });
+
+  it('throws unexpected_error when the DB delete fails', async () => {
+    mockAuthenticatedUser();
+    const eqChain = { eq: mocks.eq };
+    mocks.eq
+      .mockReturnValueOnce(eqChain)
+      .mockResolvedValueOnce({ error: new Error('boom') });
+    mocks.from.mockReturnValue({ delete: vi.fn().mockReturnValue(eqChain) });
+
+    await expect(
+      deleteMyFailurePhoto({
+        createdAt: '2026-08-26T00:00:00.000Z',
+        imageUrl: 'https://example.supabase.co/failure-photos/profile-a/1.jpg',
+        photoId: 'photo-1',
+      }),
+    ).rejects.toSatisfy((error) => {
+      expectServiceError(error, 'unexpected_error');
+      return true;
+    });
+    expect(mocks.storageFrom).not.toHaveBeenCalled();
   });
 });

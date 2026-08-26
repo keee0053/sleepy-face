@@ -1,0 +1,473 @@
+{
+  "common": {
+    "back": "Back",
+    "cancel": "Cancel",
+    "close": "Close",
+    "delete": "Delete",
+    "errors": {
+      "alarmPermissionRequired": "Please allow the \"Alarms & reminders\" permission and try again.",
+      "batteryOptimizationEnabled": "To make sure you reliably get notified when a friend wakes you, please set battery usage to \"Unrestricted\" and try again.",
+      "notificationPermissionRequired": "Notification permission is required. Please allow it and try again."
+    },
+    "loggingIn": "Logging in...",
+    "processing": "Processing...",
+    "retry": "Please try again.",
+    "self": "You",
+    "save": "Save",
+    "saving": "Saving...",
+    "weekdaysShort": {
+      "sun": "Sun",
+      "mon": "Mon",
+      "tue": "Tue",
+      "wed": "Wed",
+      "thu": "Thu",
+      "fri": "Fri",
+      "sat": "Sat"
+    }
+  },
+  "googleAuth": {
+    "loading": "Confirming login..."
+  },
+  "index": {
+    "loading": "Starting up..."
+  },
+  "languageSwitcher": {
+    "english": "English",
+    "japanese": "日本語",
+    "title": "Language"
+  },
+  "bottomNav": {
+    "alarms": "Alarms",
+    "home": "Home",
+    "friends": "Friends",
+    "settings": "Settings"
+  },
+  "screenPlaceholder": {
+    "backToMenu": "Back to Menu"
+  },
+  "loading": {
+    "loading": "Loading",
+    "loadingEllipsis": "Loading...",
+    "processingLabel": "Processing {{label}}",
+    "checkingFace": "Checking your face...",
+    "faceCheckAccessibilityLabel": "{{message}} Please wait",
+    "pleaseWait": "Please wait"
+  },
+  "loadingSkeletons": {
+    "feed": "Loading feed",
+    "alarms": "Loading alarms",
+    "friends": "Loading friend information",
+    "profile": "Loading profile"
+  },
+  "alarmSounds": {
+    "classic_beep": "Classic Beep",
+    "deviceDefault": "Device Default",
+    "digital_pulse": "Digital Pulse",
+    "gentle_chime": "Gentle Chime"
+  },
+  "reactionButton": {
+    "reactWithEmoji": "React with {{emoji}}",
+    "longPressHint": "Long press to choose an emoji",
+    "removeReaction": "Remove reaction",
+    "react": "React"
+  },
+  "questionCountStepper": {
+    "decrease": "Decrease question count",
+    "increase": "Increase question count",
+    "value": "{{count}} questions"
+  },
+  "profileIcons": {
+    "boy": "Boy",
+    "child": "Girl",
+    "grandmother": "Grandmother",
+    "human": "Standard",
+    "man": "Man 1",
+    "man2": "Man 2",
+    "oldMan": "Grandfather",
+    "woman": "Woman"
+  },
+  "signin": {
+    "description": "An alarm that shares your sleepy face with friends if you fail the quiz",
+    "errors": {
+      "loginFailed": "Login failed. Please try again later.",
+      "loginInterrupted": "Google login was interrupted. Please try again.",
+      "loginStartFailed": "Couldn't start Google login. Please check your settings."
+    },
+    "googleButton": "Sign in with Google",
+    "title": "SleepyFace"
+  },
+  "signup": {
+    "title": "Sign Up"
+  },
+  "profile": {
+    "title": "Settings",
+    "debug": {
+      "enable": "[DEV] Enable"
+    },
+    "emptyPhotos": "You have no failure records yet.",
+    "pickPhoto": "Choose Photo",
+    "userId": "User ID",
+    "displayName": "Display Name",
+    "displayNamePlaceholder": "e.g. Taro Yamada",
+    "saveButton": "Save",
+    "saving": "Saving...",
+    "signOutButton": "Sign Out",
+    "signingOut": "Signing out...",
+    "deleteAccountButton": "Delete Account",
+    "deletingAccount": "Deleting...",
+    "failureRecords": "Failure Records",
+    "deletePhotoButton": "Delete This Photo",
+    "updateSuccess": "Your profile has been updated.",
+    "photoDate": "{{year}}/{{month}}/{{day}}",
+    "deleteAccountConfirm": {
+      "title": "Delete your account?",
+      "message": "Your profile, posted photos, comments, friend relations, and all other data will be permanently deleted. This can't be undone."
+    },
+    "deletePhotoConfirm": {
+      "title": "Delete this photo?",
+      "message": "This can't be undone."
+    },
+    "errors": {
+      "displayNameRequired": "Please enter a display name.",
+      "displayNameTooLong": "Display name must be 30 characters or fewer.",
+      "invalidInput": "Please check your input.",
+      "updateFailed": "Couldn't update your profile. Please try again.",
+      "notAuthenticated": "We couldn't verify your login status. Please log in again.",
+      "loadFailed": "Couldn't load your profile. Please try again.",
+      "signOutFailed": "Couldn't sign out. Please try again.",
+      "deleteAccountFailed": "Couldn't delete your account. Please try again.",
+      "deletePhotoFailed": "Couldn't delete the photo. Please try again."
+    }
+  },
+  "blockedUsers": {
+    "title": "Blocked Users",
+    "unblockButton": "Unblock",
+    "empty": "You haven't blocked anyone.",
+    "errors": {
+      "loadFailed": "Couldn't load blocked users. Please try again.",
+      "unblockFailed": "Couldn't unblock this user. Please try again."
+    }
+  },
+  "home": {
+    "title": "Home",
+    "feedDate": "{{month}}/{{day}}",
+    "errors": {
+      "notAuthenticated": "We couldn't verify your login status. Please log in again.",
+      "loadFailed": "We couldn't load the feed. Please try again.",
+      "reactionListLoadFailed": "We couldn't load who reacted. Please try again."
+    },
+    "debug": {
+      "block": "[DEV] Block",
+      "unblock": "[DEV] Unblock",
+      "exit": "[DEV] Exit"
+    },
+    "blocked": {
+      "title": "You can't view the feed today",
+      "description": "Since you didn't leave a photo, you can't view your friends' feed today. It'll be visible again once your next alarm succeeds."
+    },
+    "empty": {
+      "title": "No posts yet",
+      "description": "Add friends to see their feed appear here."
+    },
+    "accessibility": {
+      "viewReactors": "View who reacted",
+      "viewComments": "View comments",
+      "wakeFriends": "Wake a friend who failed to wake up",
+      "close": "Close"
+    },
+    "reactionModal": {
+      "title": "Reactions",
+      "self": "You"
+    }
+  },
+  "friends": {
+    "title": "Friends",
+    "errors": {
+      "notAuthenticated": "We couldn't verify your login status. Please log in again.",
+      "loadFailed": "We couldn't get your friend information. Please try again.",
+      "blockFailed": "We couldn't block this user. Please try again."
+    },
+    "debug": {
+      "addMockFriend": "[DEBUG] +Friend",
+      "mockFriendName": "Mock Friend"
+    },
+    "wakeStatus": {
+      "pending": "No alarm has gone off yet today",
+      "outcomeSuccess": "Woke up successfully",
+      "outcomeFailure": "Failed to wake up",
+      "withCount": "{{outcome}} at {{time}} with {{count}} questions",
+      "withoutCount": "{{outcome}} at {{time}}"
+    },
+    "blockAlert": {
+      "title": "Block {{name}}?",
+      "message": "You'll no longer be friends, and neither of you will see each other's posts."
+    },
+    "actions": {
+      "block": "Block"
+    },
+    "empty": {
+      "title": "No friends yet",
+      "description": "You can add friends using the plus button in the bottom right."
+    },
+    "requests": {
+      "title": "Friend Requests",
+      "decline": "Decline",
+      "accept": "Accept"
+    },
+    "accessibility": {
+      "moreActions": "More actions",
+      "addFriend": "Add friend"
+    }
+  },
+  "alarms": {
+    "title": "Alarms",
+    "devFireTestAlarm": "[DEV] Ring in 20s",
+    "devQuestionCountLabel": "[DEV] Quiz question count",
+    "devClearFiredToday": "[DEV] Clear limit",
+    "addAlarmAccessibilityLabel": "Add alarm",
+    "noRepeat": "No repeat",
+    "skipToday": "It won't ring today. It will ring again next week.",
+    "status": {
+      "on": "ON",
+      "off": "OFF"
+    },
+    "testAlarmScheduled": "The test alarm will ring in 20 seconds.",
+    "testAlarmFailed": "Couldn't schedule the test alarm.",
+    "empty": {
+      "title": "No alarms yet",
+      "description": "Tap the plus button in the bottom right to create a new alarm."
+    },
+    "errors": {
+      "notFound": "Couldn't find the alarm.",
+      "loadFailed": "Couldn't load the alarm list.",
+      "saveStateFailed": "Couldn't save the alarm's state.",
+      "updateFailed": "Couldn't update the alarm.",
+      "schedulingFailed": "Couldn't register the alarm on this device."
+    }
+  },
+  "addAlarm": {
+    "title": "Add Alarm",
+    "backToAlarmsAccessibilityLabel": "Back to alarm list",
+    "repeat": "Repeat",
+    "alarmSound": "Alarm sound",
+    "questionCountLabel": "Quiz question count (2 min · difficulty)",
+    "errors": {
+      "noWeekdaySelected": "Please select at least one day of the week.",
+      "weekdayAlreadyUsed": "One of the selected days already has another alarm.",
+      "invalidInput": "Please check the time and days of the week.",
+      "schedulingFailed": "Couldn't register the alarm on this device.",
+      "saveFailed": "Couldn't save the alarm."
+    }
+  },
+  "editAlarm": {
+    "title": "Edit Alarm",
+    "backToAlarmsAccessibilityLabel": "Back to alarm list",
+    "loading": "Loading alarm...",
+    "repeat": "Repeat",
+    "alarmSound": "Alarm sound",
+    "questionCountLabel": "Quiz question count (2 min · difficulty)",
+    "deleteButton": "Delete alarm",
+    "deleting": "Deleting...",
+    "errors": {
+      "noAlarmSpecified": "No alarm was specified to edit.",
+      "noAlarmToDelete": "No alarm was specified to delete.",
+      "noWeekdaySelected": "Please select at least one day of the week.",
+      "weekdayAlreadyUsed": "One of the selected days already has another alarm.",
+      "invalidInput": "Please check the time and days of the week.",
+      "notFound": "Couldn't find the alarm.",
+      "schedulingFailed": "Couldn't register the alarm on this device.",
+      "updateFailed": "Couldn't update the alarm."
+    }
+  },
+  "quiz": {
+    "answerPlaceholder": "?",
+    "clear": "CLEAR",
+    "correct": "Correct!",
+    "dev": {
+      "failure": "[DEV] Failure",
+      "success": "[DEV] Success"
+    },
+    "errors": {
+      "processingFailed": "Failed to process the quiz."
+    },
+    "incorrect": "Incorrect",
+    "preparing": "Preparing quiz...",
+    "submit": "Submit",
+    "timeRemaining": "{{time}} left"
+  },
+  "quizFailure": {
+    "backToAlarmButton": "Back to Alarm",
+    "reasons": {
+      "appQuit": "The app was closed mid-challenge. You can't view the feed today.",
+      "badPhotoLimit": "Your face photo couldn't be verified, so you can't view the feed today.",
+      "noPhotoTimeout": "Time ran out before you could take a photo. You can't view the feed today."
+    },
+    "title": "Wake-Up Failed"
+  },
+  "quizFailurePhoto": {
+    "backToAlarmButton": "Back to Alarm",
+    "feedButton": "Go to Feed",
+    "status": {
+      "checking": "The quiz timed out. Uploading your photo…",
+      "failed": "The quiz timed out. Saving the photo failed, but here's the photo you took.",
+      "uploaded": "The quiz timed out. This photo was saved as your failure record."
+    },
+    "title": "Wake-Up Failed",
+    "uploadingPhoto": "Sending photo"
+  },
+  "quizSuccess": {
+    "caption": "You completed the photo and quiz",
+    "homeButton": "Go Home",
+    "title": "Wake-Up Success"
+  },
+  "faceCheck": {
+    "errors": {
+      "processingFailed": "Processing failed."
+    },
+    "messages": {
+      "initial": "Please position your face and take a photo.",
+      "cameraPermissionRequired": "Camera permission is required.",
+      "readyToCapture": "Please take a photo."
+    },
+    "timerRemaining": "{{time}} left",
+    "title": "Take a Selfie",
+    "attempts": "Failed {{count}}/{{max}}",
+    "openCameraButton": "Open Camera",
+    "openingCamera": "Starting..."
+  },
+  "faceCheckSuccess": {
+    "title": "Face Verified!",
+    "caption": "The quiz will start in {{seconds}} seconds!"
+  },
+  "faceCheckFailure": {
+    "title": "Face Verification Failed",
+    "caption": "Please take your photo again",
+    "retryButton": "Retake Photo"
+  },
+  "ringing": {
+    "errors": {
+      "checkFailed": "Failed to check the alarm."
+    },
+    "timerRemaining": "{{time}} left",
+    "greeting": "Good morning!",
+    "caption": "Take a photo to stop the alarm",
+    "starting": "Starting...",
+    "startButton": "Take a Selfie"
+  },
+  "wakeFriends": {
+    "title": "Wake a Friend",
+    "description": "Ring an alarm for a friend who failed to wake up.",
+    "questionCountLabel": "Quiz question count",
+    "backToHomeAccessibilityLabel": "Back to home",
+    "failureStatus": "Failed to wake up",
+    "ringButton": "Ring",
+    "sending": "Sending",
+    "ringAlarmAccessibilityLabel": "Ring {{displayName}}'s alarm",
+    "alarmSentSuccess": "Sent an alarm to {{displayName}}.",
+    "alarmSentError": "Couldn't send an alarm to {{displayName}}.",
+    "emptyTitle": "No friends to wake right now",
+    "emptyText": "Friends who fail to wake up will show up here.",
+    "errors": {
+      "loadFailed": "Couldn't load friends you can wake. Please try again."
+    }
+  },
+  "addFriend": {
+    "title": "Add Friend",
+    "backToFriendsAccessibilityLabel": "Back to friends list",
+    "description": "Search by user ID.",
+    "searchPlaceholder": "User ID",
+    "searchButton": "Search",
+    "searching": "Searching...",
+    "emptyText": "Search for a user to add as a friend.",
+    "becameFriendsSuccess": "You're now friends with {{displayName}}.",
+    "requestSentSuccess": "Sent a friend request to {{displayName}}.",
+    "buttonStates": {
+      "friend": "Friends",
+      "requestSent": "Request Sent",
+      "accept": "Accept",
+      "sendRequest": "Send Request"
+    },
+    "errors": {
+      "notAuthenticated": "Couldn't confirm your login status. Please log in again.",
+      "selfRelation": "You can't add yourself as a friend.",
+      "alreadyFriend": "This user is already your friend.",
+      "unexpectedError": "Couldn't update friend info. Please try again.",
+      "queryTooShort": "Please enter at least 2 characters for the user ID.",
+      "noResults": "No matching users found."
+    },
+    "debug": {
+      "addExistingFriend": "[DEBUG] +Existing Friend",
+      "addSearchResult": "[DEBUG] +Search Result",
+      "mockExistingFriendName": "Mock Existing Friend",
+      "mockSearchResultName": "Mock Search Result"
+    }
+  },
+  "photoDetail": {
+    "title": "Post",
+    "emptyComments": "Send the first comment",
+    "replyAccessibilityLabel": "Reply",
+    "cancelReplyAccessibilityLabel": "Cancel reply",
+    "replyingTo": "Replying to {{name}}",
+    "commentPlaceholder": "Add a comment",
+    "sendButton": "Send",
+    "deletePostButton": "Delete this post",
+    "reportButton": "Report",
+    "blockUserButton": "Block this user",
+    "reportCommentTitle": "Choose a reason to report this comment",
+    "deleteCommentButton": "Delete this comment",
+    "report": {
+      "title": "Choose a reason to report this post",
+      "reasons": {
+        "inappropriatePhoto": "Inappropriate photo",
+        "inappropriateContent": "Inappropriate content",
+        "harassment": "Harassment or abuse",
+        "spam": "Spam",
+        "other": "Other"
+      }
+    },
+    "blockConfirm": {
+      "title": "Block {{name}}?",
+      "message": "You'll no longer be friends, and neither of you will see each other's posts."
+    },
+    "deletePostConfirm": {
+      "title": "Delete this post?",
+      "message": "This can't be undone."
+    },
+    "deleteCommentConfirm": {
+      "title": "Delete this comment?",
+      "message": "This can't be undone."
+    },
+    "errors": {
+      "commentRequired": "Please enter a comment.",
+      "notAuthenticated": "We couldn't verify your login status. Please log in again.",
+      "commentSendFailed": "Couldn't send the comment. Please try again.",
+      "reactionLoadFailed": "Couldn't load reactions. Please try again.",
+      "reportSendFailed": "Couldn't submit the report. Please try again.",
+      "blockFailed": "Couldn't block this user. Please try again.",
+      "deletePostFailed": "Couldn't delete the post. Please try again.",
+      "deleteCommentFailed": "Couldn't delete the comment. Please try again."
+    }
+  },
+  "profileSetup": {
+    "title": "Profile Setup",
+    "checkingProfile": "Checking your profile...",
+    "pickPhotoButton": "Choose Photo",
+    "avatarCaption": "Choose your profile icon",
+    "displayNameLabel": "Display Name",
+    "displayNamePlaceholder": "e.g. Taro Yamada",
+    "userIdLabel": "User ID",
+    "userIdPlaceholder": "e.g. yamada_kun",
+    "userIdHelperText": "Used for friend search",
+    "submitButton": "Sign Up",
+    "submitting": "Creating...",
+    "errors": {
+      "publicUserIdInvalid": "User ID must be 3-20 characters using letters, numbers, _, or -.",
+      "displayNameRequired": "Please enter a display name.",
+      "displayNameTooLong": "Display name must be 30 characters or fewer.",
+      "userIdAlreadyTaken": "This user ID is already taken. Please choose another.",
+      "invalidProfileInput": "Please check your input.",
+      "createProfileFailed": "Couldn't create your profile. Please try again.",
+      "checkProfileFailed": "Couldn't check your profile status. Please try again."
+    }
+  }
+}

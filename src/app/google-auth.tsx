@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -11,10 +12,12 @@ import { LoadingState } from '@/components/loading';
 // once the login promise resolves, so this screen only needs to render a neutral loading
 // state for that brief window.
 export default function GoogleAuthScreen() {
+  const { t } = useTranslation();
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.container}>
-        <LoadingState message="ログインを確認しています..." variant="screen" />
+        <LoadingState message={t('googleAuth.loading')} variant="screen" />
       </View>
     </SafeAreaView>
   );

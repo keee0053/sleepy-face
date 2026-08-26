@@ -1,9 +1,12 @@
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { SymbolView } from 'expo-symbols';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
+  ActivityIndicator,
   FlatList,
+  Modal,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -16,8 +19,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { BottomNav } from '@/components/bottom-nav';
 import { CommentBubbleIcon } from '@/components/comment-bubble-icon';
 import { FeedLoadingSkeleton } from '@/components/loading-skeletons';
-import { PhotoRealMojiBar } from '@/components/photo-realmoji-bar';
-import { RealMojiComposer } from '@/components/realmoji-composer';
+import { ReactionButton } from '@/components/reaction-button';
 import { getProfileIconSource } from '@/constants/profile-icons';
 import { getDevMode, setDevMode } from '@/services/dev-mode';
 import {
@@ -31,26 +33,42 @@ import {
   listFriendsFeed,
   type FriendsFeedItem,
 } from '@/services/home-feed';
-import { type PhotoRealMoji } from '@/services/photo-realmojis';
+import {
+  listPhotoReactions,
+  REACTION_EMOJIS,
+  removePhotoReaction,
+  setPhotoReaction,
+  type PhotoReactionDetail,
+  type ReactionEmoji,
+} from '@/services/photo-reactions';
 import { registerPushToken } from '@/services/push-token';
 
-function getHomeFeedErrorMessage(error: unknown): string {
+function getHomeFeedErrorMessage(
+  error: unknown,
+  t: (key: string) => string,
+): string {
   if (error instanceof HomeFeedServiceError) {
     switch (error.code) {
       case 'not_authenticated':
-        return 'ログイン状態を確認できませんでした。もう一度ログインしてください。';
+        return t('home.errors.notAuthenticated');
       case 'unexpected_error':
-        return 'フィードを読み込めませんでした。もう一度お試しください。';
+        return t('home.errors.loadFailed');
     }
   }
 
-  return 'フィードを読み込めませんでした。もう一度お試しください。';
+  return t('home.errors.loadFailed');
 }
 
-function formatFeedDate(isoDate: string): string {
+function formatFeedDate(
+  isoDate: string,
+  t: (key: string, options?: Record<string, unknown>) => string,
+): string {
   const date = new Date(isoDate);
 
-  return `${date.getMonth() + 1}月${date.getDate()}日`;
+  return t('home.feedDate', {
+    day: date.getDate(),
+    month: date.getMonth() + 1,
+  });
 }
 
 type HomeData = {
@@ -66,6 +84,7 @@ async function fetchHomeData(): Promise<HomeData> {
 }
 
 export default function HomeScreen() {
+  const { t } = useTranslation();
   const [accessState, setAccessState] = useState<FriendsFeedAccessState | null>(
     null,
   );
@@ -74,7 +93,17 @@ export default function HomeScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isDevMode, setIsDevMode] = useState(false);
-  const [composerPhotoId, setComposerPhotoId] = useState<string | null>(null);
+  // A pure in-flight guard for handleToggleReaction — never read by JSX/styles, so a
+  // ref avoids an extra re-render on every reaction tap that useState would cause.
+  const pendingReactionPhotoIds = useRef<Set<string>>(new Set());
+  const [reactionListPhotoId, setReactionListPhotoId] = useState<string | null>(
+    null,
+  );
+  const [reactionListDetails, setReactionListDetails] = useState<
+    PhotoReactionDetail[]
+  >([]);
+  const [isLoadingReactionListDetails, setIsLoadingReactionListDetails] =
+    useState(false);
 
   useEffect(() => {
     let isActive = true;
@@ -110,7 +139,7 @@ export default function HomeScreen() {
       })
       .catch((error: unknown) => {
         if (isActive) {
-          setErrorMessage(getHomeFeedErrorMessage(error));
+          setErrorMessage(getHomeFeedErrorMessage(error, t));
         }
       })
       .finally(() => {
@@ -122,7 +151,7 @@ export default function HomeScreen() {
     return () => {
       isActive = false;
     };
-  }, []);
+  }, [t]);
 
   const handleRefresh = useCallback(async () => {
     setErrorMessage(null);
@@ -134,47 +163,131 @@ export default function HomeScreen() {
       setAccessState(data.accessState);
       setFeed(data.feed);
     } catch (error) {
-      setErrorMessage(getHomeFeedErrorMessage(error));
+      setErrorMessage(getHomeFeedErrorMessage(error, t));
     } finally {
       setIsRefreshing(false);
     }
-  }, []);
+  }, [t]);
 
-  const handleRealMojiSaved = useCallback((realMoji: PhotoRealMoji) => {
-    setFeed((currentFeed) =>
-      currentFeed.map((item) =>
-        item.photoId === realMoji.photoId
-          ? {
-              ...item,
-              realMojis: [
-                ...item.realMojis.filter(
-                  (itemRealMoji) =>
-                    itemRealMoji.profileId !== realMoji.profileId,
-                ),
-                realMoji,
-              ],
+  const applyReactionState = useCallback(
+    (photoId: string, viewerReactionEmoji: ReactionEmoji | null) => {
+      setFeed((currentFeed) =>
+        currentFeed.map((item) => {
+          if (item.photoId !== photoId) {
+            return item;
+          }
+
+          const previousEmoji = item.viewerReactionEmoji;
+          const hadReaction = previousEmoji !== null;
+          const hasReaction = viewerReactionEmoji !== null;
+
+          let reactionGroups = item.reactionGroups;
+
+          if (previousEmoji !== viewerReactionEmoji) {
+            const countByEmoji = new Map(
+              reactionGroups.map((group) => [group.emoji, group.count]),
+            );
+
+            if (previousEmoji) {
+              const nextCount = (countByEmoji.get(previousEmoji) ?? 1) - 1;
+
+              if (nextCount <= 0) {
+                countByEmoji.delete(previousEmoji);
+              } else {
+                countByEmoji.set(previousEmoji, nextCount);
+              }
             }
-          : item,
-      ),
-    );
-  }, []);
 
-  const handleRealMojiRemoved = useCallback(() => {
-    if (!composerPhotoId) {
-      return;
-    }
-
-    setFeed((currentFeed) =>
-      currentFeed.map((item) =>
-        item.photoId === composerPhotoId
-          ? {
-              ...item,
-              realMojis: item.realMojis.filter((realMoji) => !realMoji.isOwn),
+            if (viewerReactionEmoji) {
+              countByEmoji.set(
+                viewerReactionEmoji,
+                (countByEmoji.get(viewerReactionEmoji) ?? 0) + 1,
+              );
             }
-          : item,
-      ),
-    );
-  }, [composerPhotoId]);
+
+            reactionGroups = REACTION_EMOJIS.filter((emoji) =>
+              countByEmoji.has(emoji),
+            ).map((emoji) => ({ count: countByEmoji.get(emoji)!, emoji }));
+          }
+
+          return {
+            ...item,
+            reactionCount:
+              item.reactionCount + Number(hasReaction) - Number(hadReaction),
+            reactionGroups,
+            viewerReactionEmoji,
+          };
+        }),
+      );
+    },
+    [],
+  );
+
+  const handleShowReactionList = useCallback(
+    (photoId: string) => {
+      setReactionListPhotoId(photoId);
+      setIsLoadingReactionListDetails(true);
+
+      listPhotoReactions(photoId)
+        .then(setReactionListDetails)
+        .catch(() => {
+          setErrorMessage(t('home.errors.reactionListLoadFailed'));
+        })
+        .finally(() => {
+          setIsLoadingReactionListDetails(false);
+        });
+    },
+    [t],
+  );
+
+  const handleSelectReaction = useCallback(
+    async (item: FriendsFeedItem, emoji: ReactionEmoji) => {
+      // A photo already has a change in flight — ignore the tap rather than let a
+      // second request race the first and leave the feed out of sync.
+      if (pendingReactionPhotoIds.current.has(item.photoId)) {
+        return;
+      }
+
+      const previousEmoji = item.viewerReactionEmoji;
+
+      pendingReactionPhotoIds.current.add(item.photoId);
+
+      // Optimistic: the feed should feel instant, and a failure reverts to the exact
+      // prior state rather than a fresh refetch.
+      applyReactionState(item.photoId, emoji);
+
+      try {
+        await setPhotoReaction(item.photoId, emoji);
+      } catch {
+        applyReactionState(item.photoId, previousEmoji);
+      } finally {
+        pendingReactionPhotoIds.current.delete(item.photoId);
+      }
+    },
+    [applyReactionState],
+  );
+
+  const handleRemoveReaction = useCallback(
+    async (item: FriendsFeedItem) => {
+      if (pendingReactionPhotoIds.current.has(item.photoId)) {
+        return;
+      }
+
+      const previousEmoji = item.viewerReactionEmoji;
+
+      pendingReactionPhotoIds.current.add(item.photoId);
+      applyReactionState(item.photoId, null);
+
+      try {
+        await removePhotoReaction(item.photoId);
+      } catch {
+        applyReactionState(item.photoId, previousEmoji);
+      } finally {
+        pendingReactionPhotoIds.current.delete(item.photoId);
+      }
+    },
+    [applyReactionState],
+  );
 
   const navigateToPhotoDetail = useCallback((item: FriendsFeedItem) => {
     router.push({
@@ -224,7 +337,7 @@ export default function HomeScreen() {
           <View style={styles.feedCardHeaderText}>
             <Text style={styles.displayName}>{item.displayName}</Text>
             <Text style={styles.feedDate}>
-              {formatFeedDate(item.createdAt)}
+              {formatFeedDate(item.createdAt, t)}
             </Text>
           </View>
         </View>
@@ -237,13 +350,35 @@ export default function HomeScreen() {
       </Pressable>
 
       <View style={styles.reactionRow}>
-        <PhotoRealMojiBar
-          onCompose={() => setComposerPhotoId(item.photoId)}
-          realMojis={item.realMojis}
+        <ReactionButton
+          count={item.reactionCount}
+          // Resets the button's own open/closed picker state whenever the reaction
+          // actually changes, so it can never linger open after a pick or a removal.
+          key={item.viewerReactionEmoji ?? 'none'}
+          onRemoveEmoji={() => handleRemoveReaction(item)}
+          onSelectEmoji={(emoji) => handleSelectReaction(item, emoji)}
+          viewerEmoji={item.viewerReactionEmoji}
         />
 
+        {item.reactionGroups.length > 0 && (
+          <Pressable
+            accessibilityLabel={t('home.accessibility.viewReactors')}
+            accessibilityRole="button"
+            hitSlop={8}
+            onPress={() => handleShowReactionList(item.photoId)}
+            style={styles.otherReactionsRow}
+          >
+            {item.reactionGroups.map(({ count, emoji }) => (
+              <View key={emoji} style={styles.otherReactionPill}>
+                <Text style={styles.otherReactionEmoji}>{emoji}</Text>
+                <Text style={styles.otherReactionCount}>{count}</Text>
+              </View>
+            ))}
+          </Pressable>
+        )}
+
         <Pressable
-          accessibilityLabel="コメントを見る"
+          accessibilityLabel={t('home.accessibility.viewComments')}
           accessibilityRole="button"
           onPress={() => navigateToPhotoDetail(item)}
           style={({ pressed }) => [
@@ -262,7 +397,7 @@ export default function HomeScreen() {
     <SafeAreaView edges={['top', 'bottom']} style={styles.safeArea}>
       <View style={styles.screen}>
         <View style={styles.header}>
-          <Text style={styles.title}>ホーム</Text>
+          <Text style={styles.title}>{t('home.title')}</Text>
 
           {isDevMode && (
             <View style={styles.debugButtonRow}>
@@ -271,12 +406,16 @@ export default function HomeScreen() {
                 onPress={handleToggleDebugBlock}
               >
                 <Text style={styles.debugToggleText}>
-                  [DEV] {accessState === 'blocked' ? '解除' : 'ブロック'}
+                  {accessState === 'blocked'
+                    ? t('home.debug.unblock')
+                    : t('home.debug.block')}
                 </Text>
               </Pressable>
 
               <Pressable accessibilityRole="button" onPress={handleExitDevMode}>
-                <Text style={styles.debugToggleText}>[DEV] 終了</Text>
+                <Text style={styles.debugToggleText}>
+                  {t('home.debug.exit')}
+                </Text>
               </Pressable>
             </View>
           )}
@@ -294,10 +433,10 @@ export default function HomeScreen() {
             >
               <View style={styles.blockedBox}>
                 <Text style={styles.blockedTitle}>
-                  今日はフィードを見られません
+                  {t('home.blocked.title')}
                 </Text>
                 <Text style={styles.blockedText}>
-                  写真を残せなかったため、今日はフレンドのフィードを見られません。次のアラームで成功すると、また見られるようになります。
+                  {t('home.blocked.description')}
                 </Text>
               </View>
             </ScrollView>
@@ -308,9 +447,9 @@ export default function HomeScreen() {
               keyExtractor={(item) => item.photoId}
               ListEmptyComponent={
                 <View style={styles.emptyBox}>
-                  <Text style={styles.emptyTitle}>まだ投稿がありません</Text>
+                  <Text style={styles.emptyTitle}>{t('home.empty.title')}</Text>
                   <Text style={styles.emptyText}>
-                    友達を追加すると、ここにフィードが表示されます。
+                    {t('home.empty.description')}
                   </Text>
                 </View>
               }
@@ -323,7 +462,7 @@ export default function HomeScreen() {
         </View>
 
         <Pressable
-          accessibilityLabel="起床に失敗した友達を起こす"
+          accessibilityLabel={t('home.accessibility.wakeFriends')}
           accessibilityRole="button"
           onPress={() => router.push('/wake-friends')}
           style={({ pressed }) => [
@@ -342,18 +481,59 @@ export default function HomeScreen() {
         <BottomNav activeRoute="/home" />
       </View>
 
-      {!!composerPhotoId && (
-        <RealMojiComposer
-          existingRealMoji={feed
-            .find((item) => item.photoId === composerPhotoId)
-            ?.realMojis.find((realMoji) => realMoji.isOwn)}
-          onClose={() => setComposerPhotoId(null)}
-          onRemoved={handleRealMojiRemoved}
-          onSaved={handleRealMojiSaved}
-          photoId={composerPhotoId}
-          visible
-        />
-      )}
+      <Modal
+        animationType="fade"
+        onRequestClose={() => setReactionListPhotoId(null)}
+        transparent
+        visible={reactionListPhotoId !== null}
+      >
+        <View style={styles.modalBackdrop}>
+          <View style={styles.reactionListSheet}>
+            <View style={styles.reactionListHeader}>
+              <Text style={styles.reactionListTitle}>
+                {t('home.reactionModal.title')}
+              </Text>
+              <Pressable
+                accessibilityLabel={t('home.accessibility.close')}
+                accessibilityRole="button"
+                hitSlop={12}
+                onPress={() => setReactionListPhotoId(null)}
+              >
+                <Text style={styles.modalCloseButtonText}>✕</Text>
+              </Pressable>
+            </View>
+
+            {isLoadingReactionListDetails ? (
+              <ActivityIndicator
+                color="#171717"
+                style={styles.reactionListLoading}
+              />
+            ) : (
+              <FlatList
+                data={reactionListDetails}
+                keyExtractor={(item) => item.profileId}
+                renderItem={({ item }) => (
+                  <View style={styles.reactorRow}>
+                    <View style={styles.reactorAvatar}>
+                      <Image
+                        contentFit="cover"
+                        source={getProfileIconSource(item.iconId)}
+                        style={styles.reactorAvatarImage}
+                      />
+                    </View>
+                    <Text style={styles.reactorName}>
+                      {item.isOwn
+                        ? t('home.reactionModal.self')
+                        : item.displayName}
+                    </Text>
+                    <Text style={styles.reactorEmoji}>{item.emoji}</Text>
+                  </View>
+                )}
+              />
+            )}
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -481,6 +661,31 @@ const styles = StyleSheet.create({
   reactionButtonPressed: {
     opacity: 0.7,
   },
+  otherReactionsRow: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+  },
+  otherReactionPill: {
+    alignItems: 'center',
+    backgroundColor: '#fafafa',
+    borderColor: '#f1f1f1',
+    borderRadius: 14,
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: 3,
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+  },
+  otherReactionEmoji: {
+    fontSize: 13,
+  },
+  otherReactionCount: {
+    color: '#737373',
+    fontSize: 12,
+    fontWeight: '700',
+  },
   commentButton: {
     alignItems: 'center',
     flexDirection: 'row',
@@ -529,5 +734,71 @@ const styles = StyleSheet.create({
   },
   wakeFriendsFabPressed: {
     opacity: 0.78,
+  },
+  modalBackdrop: {
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.4)',
+    flex: 1,
+    justifyContent: 'center',
+    paddingHorizontal: 24,
+  },
+  modalCloseButtonText: {
+    color: '#171717',
+    fontSize: 16,
+    fontWeight: '800',
+  },
+  reactionListSheet: {
+    backgroundColor: '#ffffff',
+    borderRadius: 20,
+    maxHeight: '70%',
+    paddingBottom: 12,
+    paddingTop: 16,
+    width: '100%',
+  },
+  reactionListHeader: {
+    alignItems: 'center',
+    borderBottomColor: '#f5f5f5',
+    borderBottomWidth: 1,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingBottom: 12,
+    paddingHorizontal: 20,
+  },
+  reactionListTitle: {
+    color: '#171717',
+    fontSize: 16,
+    fontWeight: '800',
+  },
+  reactionListLoading: {
+    paddingVertical: 24,
+  },
+  reactorRow: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 10,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+  },
+  reactorAvatar: {
+    alignItems: 'center',
+    backgroundColor: '#e5e5e5',
+    borderRadius: 16,
+    height: 32,
+    justifyContent: 'center',
+    overflow: 'hidden',
+    width: 32,
+  },
+  reactorAvatarImage: {
+    height: '100%',
+    width: '100%',
+  },
+  reactorName: {
+    color: '#171717',
+    flex: 1,
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  reactorEmoji: {
+    fontSize: 18,
   },
 });

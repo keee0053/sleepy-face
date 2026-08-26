@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 
 const FEED_SKELETON_ITEMS = ['feed-1', 'feed-2'];
@@ -36,9 +37,11 @@ function SkeletonContainer({
 }
 
 export function FeedLoadingSkeleton() {
+  const { t } = useTranslation();
+
   return (
     <SkeletonContainer
-      accessibilityLabel="フィードを読み込み中"
+      accessibilityLabel={t('loadingSkeletons.feed')}
       style={styles.feedList}
     >
       {FEED_SKELETON_ITEMS.map((item) => (
@@ -58,9 +61,11 @@ export function FeedLoadingSkeleton() {
 }
 
 export function AlarmListLoadingSkeleton() {
+  const { t } = useTranslation();
+
   return (
     <SkeletonContainer
-      accessibilityLabel="アラームを読み込み中"
+      accessibilityLabel={t('loadingSkeletons.alarms')}
       style={styles.alarmList}
     >
       {ALARM_SKELETON_ITEMS.map((item) => (
@@ -77,9 +82,11 @@ export function AlarmListLoadingSkeleton() {
 }
 
 export function FriendListLoadingSkeleton() {
+  const { t } = useTranslation();
+
   return (
     <SkeletonContainer
-      accessibilityLabel="友達情報を読み込み中"
+      accessibilityLabel={t('loadingSkeletons.friends')}
       style={styles.friendList}
     >
       {FRIEND_SKELETON_ITEMS.map((item) => (
@@ -96,9 +103,11 @@ export function FriendListLoadingSkeleton() {
 }
 
 export function ProfileLoadingSkeleton() {
+  const { t } = useTranslation();
+
   return (
     <SkeletonContainer
-      accessibilityLabel="プロフィールを読み込み中"
+      accessibilityLabel={t('loadingSkeletons.profile')}
       style={styles.profile}
     >
       <SkeletonBlock style={styles.profileAvatar} />

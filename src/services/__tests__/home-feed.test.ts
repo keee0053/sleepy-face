@@ -7,7 +7,6 @@ const mocks = vi.hoisted(() => ({
   getUser: vi.fn(),
   in: vi.fn(),
   listFriendRelations: vi.fn(),
-  listPhotoRealMojis: vi.fn(),
   order: vi.fn(),
   select: vi.fn(),
 }));
@@ -30,10 +29,6 @@ vi.mock('@/services/friend', async () => {
   };
 });
 
-vi.mock('@/services/photo-realmojis', () => ({
-  listPhotoRealMojis: mocks.listPhotoRealMojis,
-}));
-
 function mockAuthenticatedUser(id = 'profile-a') {
   mocks.getUser.mockResolvedValue({
     data: { user: { id } },
@@ -52,15 +47,20 @@ function expectServiceError(
 describe('home feed service', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mocks.listPhotoRealMojis.mockResolvedValue([]);
   });
 
-  it('returns an empty feed when the user has no friends', async () => {
+  it('returns an empty feed when the user has no friends and no own posts', async () => {
     mockAuthenticatedUser();
     mocks.listFriendRelations.mockResolvedValue([]);
 
+    const photosOrder = vi.fn().mockResolvedValue({ data: [], error: null });
+    const photosIn = vi.fn().mockReturnValue({ order: photosOrder });
+    mocks.from.mockReturnValue({
+      select: vi.fn().mockReturnValue({ in: photosIn }),
+    });
+
     await expect(listFriendsFeed()).resolves.toEqual([]);
-    expect(mocks.from).not.toHaveBeenCalled();
+    expect(photosIn).toHaveBeenCalledWith('profile_id', ['profile-a']);
   });
 
   it('lists friends photos newest first, joined with friend profile info', async () => {
@@ -71,6 +71,7 @@ describe('home feed service', () => {
         friendProfileId: 'profile-b',
         id: 'relation-1',
         profileId: 'profile-a',
+        status: 'accepted',
       },
     ]);
 
@@ -100,21 +101,14 @@ describe('home feed service', () => {
     });
     const profilesSelect = vi.fn().mockReturnValue({ in: profilesIn });
 
-    const realMojis = [
-      {
-        createdAt: '2026-08-19T00:01:00.000Z',
-        displayName: '自分',
-        emoji: '😂',
-        iconId: 'human',
-        id: 'realmoji-1',
-        imageUrl: 'https://storage.example/realmoji-1.jpg',
-        isOwn: true,
-        photoId: 'photo-1',
-        profileId: 'profile-a',
-        updatedAt: '2026-08-19T00:01:00.000Z',
-      },
-    ];
-    mocks.listPhotoRealMojis.mockResolvedValue(realMojis);
+    const reactionsIn = vi.fn().mockResolvedValue({
+      data: [
+        { emoji: '🤣', photo_id: 'photo-1', profile_id: 'profile-a' },
+        { emoji: '😂', photo_id: 'photo-1', profile_id: 'profile-c' },
+      ],
+      error: null,
+    });
+    const reactionsSelect = vi.fn().mockReturnValue({ in: reactionsIn });
 
     const commentsIn = vi.fn().mockResolvedValue({
       data: [
@@ -135,6 +129,10 @@ describe('home feed service', () => {
         return { select: profilesSelect };
       }
 
+      if (table === 'photo_reactions') {
+        return { select: reactionsSelect };
+      }
+
       if (table === 'comments') {
         return { select: commentsSelect };
       }
@@ -151,16 +149,24 @@ describe('home feed service', () => {
         imageUrl: 'https://storage.example/photo-1.jpg',
         photoId: 'photo-1',
         profileId: 'profile-b',
-        realMojis,
+        reactionCount: 2,
+        reactionGroups: [
+          { count: 1, emoji: '😂' },
+          { count: 1, emoji: '🤣' },
+        ],
+        viewerReactionEmoji: '🤣',
       },
     ]);
 
-    expect(photosIn).toHaveBeenCalledWith('profile_id', ['profile-b']);
+    expect(photosIn).toHaveBeenCalledWith('profile_id', [
+      'profile-b',
+      'profile-a',
+    ]);
     expect(photosOrder).toHaveBeenCalledWith('created_at', {
       ascending: false,
     });
-    expect(profilesIn).toHaveBeenCalledWith('id', ['profile-b']);
-    expect(mocks.listPhotoRealMojis).toHaveBeenCalledWith(['photo-1']);
+    expect(profilesIn).toHaveBeenCalledWith('id', ['profile-b', 'profile-a']);
+    expect(reactionsIn).toHaveBeenCalledWith('photo_id', ['photo-1']);
     expect(commentsIn).toHaveBeenCalledWith('photo_id', ['photo-1']);
   });
 
@@ -172,6 +178,7 @@ describe('home feed service', () => {
         friendProfileId: 'profile-b',
         id: 'relation-1',
         profileId: 'profile-a',
+        status: 'accepted',
       },
     ]);
 
@@ -190,13 +197,19 @@ describe('home feed service', () => {
     const photosSelect = vi.fn().mockReturnValue({ in: photosIn });
 
     const profilesIn = vi.fn().mockResolvedValue({ data: [], error: null });
-    const profilesSelect = vi.fn().mockReturnValue({ in: profilesIn });
+    const emptyIn = vi.fn().mockResolvedValue({ data: [], error: null });
 
-    mocks.from.mockImplementation((table: string) =>
-      table === 'photos'
-        ? { select: photosSelect }
-        : { select: profilesSelect },
-    );
+    mocks.from.mockImplementation((table: string) => {
+      if (table === 'photos') {
+        return { select: photosSelect };
+      }
+
+      if (table === 'profiles') {
+        return { select: vi.fn().mockReturnValue({ in: profilesIn }) };
+      }
+
+      return { select: vi.fn().mockReturnValue({ in: emptyIn }) };
+    });
 
     const feed = await listFriendsFeed();
 
@@ -227,6 +240,7 @@ describe('home feed service', () => {
         friendProfileId: 'profile-b',
         id: 'relation-1',
         profileId: 'profile-a',
+        status: 'accepted',
       },
     ]);
 
@@ -244,7 +258,7 @@ describe('home feed service', () => {
     });
   });
 
-  it('wraps a RealMoji loading failure', async () => {
+  it('wraps a Supabase error while fetching photo reactions', async () => {
     mockAuthenticatedUser();
     mocks.listFriendRelations.mockResolvedValue([
       {
@@ -252,6 +266,7 @@ describe('home feed service', () => {
         friendProfileId: 'profile-b',
         id: 'relation-1',
         profileId: 'profile-a',
+        status: 'accepted',
       },
     ]);
 
@@ -268,13 +283,25 @@ describe('home feed service', () => {
     });
     const photosIn = vi.fn().mockReturnValue({ order: photosOrder });
     const profilesIn = vi.fn().mockResolvedValue({ data: [], error: null });
+    const reactionsIn = vi
+      .fn()
+      .mockResolvedValue({ data: null, error: new Error('boom') });
 
-    mocks.from.mockImplementation((table: string) => ({
-      select: vi.fn().mockReturnValue({
-        in: table === 'photos' ? photosIn : profilesIn,
-      }),
-    }));
-    mocks.listPhotoRealMojis.mockRejectedValue(new Error('RealMoji failed'));
+    mocks.from.mockImplementation((table: string) => {
+      if (table === 'photos') {
+        return { select: vi.fn().mockReturnValue({ in: photosIn }) };
+      }
+
+      if (table === 'profiles') {
+        return { select: vi.fn().mockReturnValue({ in: profilesIn }) };
+      }
+
+      if (table === 'photo_reactions') {
+        return { select: vi.fn().mockReturnValue({ in: reactionsIn }) };
+      }
+
+      throw new Error(`unexpected table: ${table}`);
+    });
 
     await expect(listFriendsFeed()).rejects.toSatisfy((error) => {
       expectServiceError(error, 'unexpected_error');

@@ -11,6 +11,8 @@ export type Comment = {
   content: string;
   createdAt: string;
   isOwn: boolean;
+  // Null for a top-level comment; otherwise the id of the comment this one replies to.
+  parentCommentId: string | null;
 };
 
 export type CommentServiceErrorCode =
@@ -22,6 +24,7 @@ type CommentRow = {
   user_id: string;
   content: string;
   created_at: string;
+  parent_comment_id: string | null;
 };
 
 type ProfileRow = {
@@ -70,6 +73,7 @@ function mapComments(
       iconId: toProfileIconValue(profile?.icon_url),
       id: row.id,
       isOwn: row.user_id === viewerProfileId,
+      parentCommentId: row.parent_comment_id,
       photoId: row.photo_id,
       profileId: row.user_id,
     };
@@ -82,7 +86,7 @@ export async function listComments(photoId: string): Promise<Comment[]> {
 
   const { data: commentRows, error: commentError } = await supabase
     .from('comments')
-    .select('id, photo_id, user_id, content, created_at')
+    .select('id, photo_id, user_id, content, created_at, parent_comment_id')
     .eq('photo_id', photoId)
     .order('created_at', { ascending: true });
 
@@ -130,6 +134,7 @@ export async function listComments(photoId: string): Promise<Comment[]> {
 export async function addComment(
   photoId: string,
   content: string,
+  parentCommentId: string | null = null,
 ): Promise<Comment> {
   const trimmedContent = content.trim();
 
@@ -146,10 +151,11 @@ export async function addComment(
     .from('comments')
     .insert({
       content: trimmedContent,
+      parent_comment_id: parentCommentId,
       photo_id: photoId,
       user_id: viewerProfileId,
     })
-    .select('id, photo_id, user_id, content, created_at')
+    .select('id, photo_id, user_id, content, created_at, parent_comment_id')
     .single();
 
   if (insertError || !commentRow) {
@@ -183,4 +189,24 @@ export async function addComment(
     profileById,
     viewerProfileId,
   )[0];
+}
+
+// Deleting a top-level comment cascades to its replies (parent_comment_id references
+// comments(id) on delete cascade -- see 2026-08-22_comments.sql).
+export async function deleteComment(commentId: string): Promise<void> {
+  const viewerProfileId = await getRequiredProfileId();
+
+  const { error } = await supabase
+    .from('comments')
+    .delete()
+    .eq('id', commentId)
+    .eq('user_id', viewerProfileId);
+
+  if (error) {
+    throw new CommentServiceError(
+      'unexpected_error',
+      'Could not delete the comment.',
+      error,
+    );
+  }
 }

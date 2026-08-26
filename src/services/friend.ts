@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase';
+import { listBlockedProfileIds } from '@/services/moderation';
 import { toProfileIconId, type ProfileIconId } from '@/services/user';
 
 export type FriendSearchProfile = {
@@ -9,14 +10,24 @@ export type FriendSearchProfile = {
   createdAt: string;
 };
 
+export type FriendRelationStatus = 'pending' | 'accepted';
+
 export type FriendRelation = {
   id: string;
   profileId: string;
   friendProfileId: string;
+  status: FriendRelationStatus;
   createdAt: string;
 };
 
 export type FriendProfile = FriendSearchProfile & {
+  relationId: string;
+};
+
+// A pending relation the viewer sent (profileId === viewer) or received
+// (friendProfileId === viewer) — see resolveFriendProfileId for which side `id`/profile
+// fields describe the OTHER person.
+export type FriendRequest = FriendSearchProfile & {
   relationId: string;
 };
 
@@ -35,6 +46,7 @@ type FriendRelationRow = {
   id: string;
   profile_id: string;
   friend_profile_id: string;
+  status: string;
   created_at: string;
 };
 
@@ -79,12 +91,17 @@ export function resolveFriendProfileId(
     : relation.profileId;
 }
 
+function isFriendRelationStatus(value: string): value is FriendRelationStatus {
+  return value === 'pending' || value === 'accepted';
+}
+
 function mapFriendRelation(row: FriendRelationRow): FriendRelation {
   return {
     createdAt: row.created_at,
     friendProfileId: row.friend_profile_id,
     id: row.id,
     profileId: row.profile_id,
+    status: isFriendRelationStatus(row.status) ? row.status : 'pending',
   };
 }
 
@@ -142,14 +159,24 @@ export async function searchProfiles(
   }
 
   const searchValue = escapePostgrestSearchValue(normalizedQuery.toLowerCase());
+  const blockedProfileIds = await listBlockedProfileIds();
 
-  // Public User IDの前方一致のみで探す。自分自身は候補から外す。
-  const { data, error } = await supabase
+  // Public User IDの前方一致のみで探す。自分自身とブロック済みのユーザーは候補から外す。
+  let profileQuery = supabase
     .from('profiles')
     .select('id, user_id, display_name, icon_url, created_at')
     .ilike('user_id', `${searchValue}%`)
-    .neq('id', profileId)
-    .limit(FRIEND_SEARCH_LIMIT);
+    .neq('id', profileId);
+
+  if (blockedProfileIds.length > 0) {
+    profileQuery = profileQuery.not(
+      'id',
+      'in',
+      `(${blockedProfileIds.join(',')})`,
+    );
+  }
+
+  const { data, error } = await profileQuery.limit(FRIEND_SEARCH_LIMIT);
 
   if (error) {
     throw mapFriendServiceError(error);
@@ -163,7 +190,7 @@ export async function listFriendRelations(): Promise<FriendRelation[]> {
 
   const { data, error } = await supabase
     .from('friends_relations')
-    .select('id, profile_id, friend_profile_id, created_at')
+    .select('id, profile_id, friend_profile_id, status, created_at')
     .or(`profile_id.eq.${profileId},friend_profile_id.eq.${profileId}`)
     .order('created_at', { ascending: false });
 
@@ -174,44 +201,83 @@ export async function listFriendRelations(): Promise<FriendRelation[]> {
   return (data ?? []).map(mapFriendRelation);
 }
 
-export async function listFriends(): Promise<FriendProfile[]> {
-  const profileId = await getRequiredProfileId();
-  const relations = await listFriendRelations();
-  const friendProfileIds = relations.map((relation) =>
-    resolveFriendProfileId(relation, profileId),
+// Fetches the profile for the OTHER party of each given relation (relative to
+// viewerProfileId), pairing each one back up with its relationId.
+async function loadProfilesForRelations(
+  relations: FriendRelation[],
+  viewerProfileId: string,
+): Promise<FriendProfile[]> {
+  const otherProfileIds = relations.map((relation) =>
+    resolveFriendProfileId(relation, viewerProfileId),
   );
 
-  if (friendProfileIds.length === 0) {
+  if (otherProfileIds.length === 0) {
     return [];
   }
 
   const { data, error } = await supabase
     .from('profiles')
     .select('id, user_id, display_name, icon_url, created_at')
-    .in('id', friendProfileIds);
+    .in('id', otherProfileIds);
 
   if (error) {
     throw mapFriendServiceError(error);
   }
 
-  const relationByFriendProfileId = new Map(
+  const relationByOtherProfileId = new Map(
     relations.map((relation) => [
-      relation.profileId === profileId
-        ? relation.friendProfileId
-        : relation.profileId,
+      resolveFriendProfileId(relation, viewerProfileId),
       relation,
     ]),
   );
 
   return (data ?? []).map((row) => {
     const profile = mapProfile(row);
-    const relation = relationByFriendProfileId.get(profile.id);
+    const relation = relationByOtherProfileId.get(profile.id);
 
     return {
       ...profile,
       relationId: relation?.id ?? '',
     };
   });
+}
+
+export async function listFriends(): Promise<FriendProfile[]> {
+  const profileId = await getRequiredProfileId();
+  const relations = await listFriendRelations();
+
+  return loadProfilesForRelations(
+    relations.filter((relation) => relation.status === 'accepted'),
+    profileId,
+  );
+}
+
+// Requests sent TO the viewer, awaiting the viewer's approval.
+export async function listIncomingFriendRequests(): Promise<FriendRequest[]> {
+  const profileId = await getRequiredProfileId();
+  const relations = await listFriendRelations();
+
+  return loadProfilesForRelations(
+    relations.filter(
+      (relation) =>
+        relation.status === 'pending' && relation.friendProfileId === profileId,
+    ),
+    profileId,
+  );
+}
+
+// Requests the viewer sent, still awaiting the other side's approval.
+export async function listOutgoingFriendRequests(): Promise<FriendRequest[]> {
+  const profileId = await getRequiredProfileId();
+  const relations = await listFriendRelations();
+
+  return loadProfilesForRelations(
+    relations.filter(
+      (relation) =>
+        relation.status === 'pending' && relation.profileId === profileId,
+    ),
+    profileId,
+  );
 }
 
 export async function addFriend(
@@ -232,7 +298,7 @@ export async function addFriend(
       friend_profile_id: friendProfileId,
       profile_id: profileId,
     })
-    .select('id, profile_id, friend_profile_id, created_at')
+    .select('id, profile_id, friend_profile_id, status, created_at')
     .single();
 
   if (error) {
@@ -240,4 +306,36 @@ export async function addFriend(
   }
 
   return mapFriendRelation(data);
+}
+
+// Only the recipient of a pending request may accept it (enforced by RLS — see
+// 2026-08-25_friend_requests.sql).
+export async function acceptFriendRequest(
+  relationId: string,
+): Promise<FriendRelation> {
+  const { data, error } = await supabase
+    .from('friends_relations')
+    .update({ status: 'accepted' })
+    .eq('id', relationId)
+    .select('id, profile_id, friend_profile_id, status, created_at')
+    .single();
+
+  if (error) {
+    throw mapFriendServiceError(error);
+  }
+
+  return mapFriendRelation(data);
+}
+
+// Removes a relation outright — declining an incoming request, canceling one the viewer
+// sent, or unfriending an already-accepted relation.
+export async function declineFriendRequest(relationId: string): Promise<void> {
+  const { error } = await supabase
+    .from('friends_relations')
+    .delete()
+    .eq('id', relationId);
+
+  if (error) {
+    throw mapFriendServiceError(error);
+  }
 }

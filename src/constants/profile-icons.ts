@@ -26,13 +26,13 @@ export function getProfileIconSource(iconValue: string): ImageSourcePropType {
   return PROFILE_ICON_SOURCES[toProfileIconId(iconValue)];
 }
 
-export const PROFILE_ICON_LABELS: Record<ProfileIconId, string> = {
-  boy: '男の子',
-  child: '女の子',
-  grandmother: 'おばあちゃん',
-  human: '標準',
-  man: '男性1',
-  man2: '男性2',
-  'old-man': 'おじいちゃん',
-  woman: '女性',
-};
+// A plain Record can't reactively follow a runtime language switch (it would bake in
+// whatever language was active at module load), so this is a function taking `t` from
+// the calling component's own useTranslation(), same pattern as the error-message
+// helpers throughout the app (e.g. src/app/signin.tsx's getLoginErrorMessage).
+export function getProfileIconLabel(
+  iconId: ProfileIconId,
+  t: (key: string) => string,
+): string {
+  return t(`profileIcons.${iconId === 'old-man' ? 'oldMan' : iconId}`);
+}

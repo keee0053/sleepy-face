@@ -1,0 +1,473 @@
+{
+  "common": {
+    "back": "戻る",
+    "cancel": "キャンセル",
+    "close": "閉じる",
+    "delete": "削除する",
+    "errors": {
+      "alarmPermissionRequired": "「アラームとリマインダー」の権限を許可してから、もう一度お試しください。",
+      "batteryOptimizationEnabled": "友達に起こしてもらう通知を確実に受け取るため、バッテリー使用量の最適化を「制限なし」に設定してから、もう一度お試しください。",
+      "notificationPermissionRequired": "通知の権限が必要です。許可してからもう一度お試しください。"
+    },
+    "loggingIn": "ログイン中...",
+    "processing": "処理中...",
+    "retry": "もう一度お試しください。",
+    "self": "自分",
+    "save": "保存",
+    "saving": "保存中...",
+    "weekdaysShort": {
+      "sun": "日",
+      "mon": "月",
+      "tue": "火",
+      "wed": "水",
+      "thu": "木",
+      "fri": "金",
+      "sat": "土"
+    }
+  },
+  "googleAuth": {
+    "loading": "ログインを確認しています..."
+  },
+  "index": {
+    "loading": "起動しています..."
+  },
+  "languageSwitcher": {
+    "english": "English",
+    "japanese": "日本語",
+    "title": "言語"
+  },
+  "bottomNav": {
+    "alarms": "アラーム",
+    "home": "ホーム",
+    "friends": "友達",
+    "settings": "設定"
+  },
+  "screenPlaceholder": {
+    "backToMenu": "画面一覧に戻る"
+  },
+  "loading": {
+    "loading": "読み込み中",
+    "loadingEllipsis": "読み込み中...",
+    "processingLabel": "{{label}}を処理中",
+    "checkingFace": "顔を確認しています...",
+    "faceCheckAccessibilityLabel": "{{message}} そのままお待ちください",
+    "pleaseWait": "そのままお待ちください"
+  },
+  "loadingSkeletons": {
+    "feed": "フィードを読み込み中",
+    "alarms": "アラームを読み込み中",
+    "friends": "友達情報を読み込み中",
+    "profile": "プロフィールを読み込み中"
+  },
+  "alarmSounds": {
+    "classic_beep": "クラシックビープ",
+    "deviceDefault": "端末のデフォルト",
+    "digital_pulse": "デジタルパルス",
+    "gentle_chime": "やさしいチャイム"
+  },
+  "reactionButton": {
+    "reactWithEmoji": "{{emoji}}でリアクションする",
+    "longPressHint": "長押しで絵文字を選べます",
+    "removeReaction": "リアクションを取り消す",
+    "react": "リアクションする"
+  },
+  "questionCountStepper": {
+    "decrease": "問題数を減らす",
+    "increase": "問題数を増やす",
+    "value": "{{count}}問"
+  },
+  "profileIcons": {
+    "boy": "男の子",
+    "child": "女の子",
+    "grandmother": "おばあちゃん",
+    "human": "標準",
+    "man": "男性1",
+    "man2": "男性2",
+    "oldMan": "おじいちゃん",
+    "woman": "女性"
+  },
+  "signin": {
+    "description": "クイズに失敗すると寝顔が友達に公開されるアラーム",
+    "errors": {
+      "loginFailed": "ログインに失敗しました。時間をおいてもう一度お試しください。",
+      "loginInterrupted": "Googleログインが中断されました。もう一度お試しください。",
+      "loginStartFailed": "Googleログインを開始できませんでした。設定を確認してください。"
+    },
+    "googleButton": "Googleでログイン",
+    "title": "SleepyFace"
+  },
+  "signup": {
+    "title": "新規登録画面"
+  },
+  "profile": {
+    "title": "設定",
+    "debug": {
+      "enable": "[DEV] 有効化"
+    },
+    "emptyPhotos": "まだ失敗の記録がありません。",
+    "pickPhoto": "写真を選ぶ",
+    "userId": "ユーザーID",
+    "displayName": "表示名",
+    "displayNamePlaceholder": "例：山田 太郎",
+    "saveButton": "保存する",
+    "saving": "保存中...",
+    "signOutButton": "ログアウト",
+    "signingOut": "ログアウト中...",
+    "deleteAccountButton": "アカウントを削除",
+    "deletingAccount": "削除中...",
+    "failureRecords": "失敗の記録",
+    "deletePhotoButton": "この写真を削除",
+    "updateSuccess": "プロフィールを更新しました。",
+    "photoDate": "{{year}}年{{month}}月{{day}}日",
+    "deleteAccountConfirm": {
+      "title": "アカウントを削除しますか？",
+      "message": "プロフィール、投稿した写真、コメント、友達関係など、すべてのデータが完全に削除されます。この操作は取り消せません。"
+    },
+    "deletePhotoConfirm": {
+      "title": "この写真を削除しますか？",
+      "message": "この操作は取り消せません。"
+    },
+    "errors": {
+      "displayNameRequired": "表示名を入力してください。",
+      "displayNameTooLong": "表示名は30文字以内で入力してください。",
+      "invalidInput": "入力内容を確認してください。",
+      "updateFailed": "プロフィールを更新できませんでした。もう一度お試しください。",
+      "notAuthenticated": "ログイン状態を確認できませんでした。もう一度ログインしてください。",
+      "loadFailed": "プロフィールを読み込めませんでした。もう一度お試しください。",
+      "signOutFailed": "ログアウトできませんでした。もう一度お試しください。",
+      "deleteAccountFailed": "アカウントを削除できませんでした。もう一度お試しください。",
+      "deletePhotoFailed": "写真を削除できませんでした。もう一度お試しください。"
+    }
+  },
+  "blockedUsers": {
+    "title": "ブロックしたユーザー",
+    "unblockButton": "解除",
+    "empty": "ブロックしたユーザーはいません。",
+    "errors": {
+      "loadFailed": "ブロックしたユーザーを取得できませんでした。もう一度お試しください。",
+      "unblockFailed": "ブロックを解除できませんでした。もう一度お試しください。"
+    }
+  },
+  "home": {
+    "title": "ホーム",
+    "feedDate": "{{month}}月{{day}}日",
+    "errors": {
+      "notAuthenticated": "ログイン状態を確認できませんでした。もう一度ログインしてください。",
+      "loadFailed": "フィードを読み込めませんでした。もう一度お試しください。",
+      "reactionListLoadFailed": "リアクションした人を読み込めませんでした。もう一度お試しください。"
+    },
+    "debug": {
+      "block": "[DEV] ブロック",
+      "unblock": "[DEV] 解除",
+      "exit": "[DEV] 終了"
+    },
+    "blocked": {
+      "title": "今日はフィードを見られません",
+      "description": "写真を残せなかったため、今日はフレンドのフィードを見られません。次のアラームで成功すると、また見られるようになります。"
+    },
+    "empty": {
+      "title": "まだ投稿がありません",
+      "description": "友達を追加すると、ここにフィードが表示されます。"
+    },
+    "accessibility": {
+      "viewReactors": "リアクションした人を見る",
+      "viewComments": "コメントを見る",
+      "wakeFriends": "起床に失敗した友達を起こす",
+      "close": "閉じる"
+    },
+    "reactionModal": {
+      "title": "リアクション",
+      "self": "自分"
+    }
+  },
+  "friends": {
+    "title": "友達",
+    "errors": {
+      "notAuthenticated": "ログイン状態を確認できませんでした。もう一度ログインしてください。",
+      "loadFailed": "友達情報を取得できませんでした。もう一度お試しください。",
+      "blockFailed": "ブロックできませんでした。もう一度お試しください。"
+    },
+    "debug": {
+      "addMockFriend": "[DEBUG] +友達",
+      "mockFriendName": "モック友達"
+    },
+    "wakeStatus": {
+      "pending": "今日はまだアラームが鳴っていません",
+      "outcomeSuccess": "起床成功",
+      "outcomeFailure": "起床失敗",
+      "withCount": "{{time}} に {{count}}問で{{outcome}}",
+      "withoutCount": "{{time}} に {{outcome}}"
+    },
+    "blockAlert": {
+      "title": "{{name}}さんをブロックしますか？",
+      "message": "友達関係が解除され、お互いの投稿が見えなくなります。"
+    },
+    "actions": {
+      "block": "ブロックする"
+    },
+    "empty": {
+      "title": "まだ友達がいません",
+      "description": "右下のプラスボタンから友達を追加できます。"
+    },
+    "requests": {
+      "title": "友達リクエスト",
+      "decline": "拒否",
+      "accept": "承認"
+    },
+    "accessibility": {
+      "moreActions": "その他の操作",
+      "addFriend": "友達を追加"
+    }
+  },
+  "alarms": {
+    "title": "アラーム",
+    "devFireTestAlarm": "[DEV] 20秒後に鳴らす",
+    "devQuestionCountLabel": "[DEV] クイズ問題数",
+    "devClearFiredToday": "[DEV] 制限解除",
+    "addAlarmAccessibilityLabel": "アラームを追加",
+    "noRepeat": "繰り返しなし",
+    "skipToday": "今日は鳴りません。次回は来週鳴ります。",
+    "status": {
+      "on": "ON",
+      "off": "OFF"
+    },
+    "testAlarmScheduled": "20秒後にテストアラームが鳴ります。",
+    "testAlarmFailed": "テストアラームを登録できませんでした。",
+    "empty": {
+      "title": "アラームがありません",
+      "description": "右下のプラスボタンから新しいアラームを作成できます。"
+    },
+    "errors": {
+      "notFound": "アラームが見つかりませんでした。",
+      "loadFailed": "アラーム一覧を読み込めませんでした。",
+      "saveStateFailed": "アラームの状態を保存できませんでした。",
+      "updateFailed": "アラーム情報を更新できませんでした。",
+      "schedulingFailed": "アラームを端末に登録できませんでした。"
+    }
+  },
+  "addAlarm": {
+    "title": "アラームを追加",
+    "backToAlarmsAccessibilityLabel": "アラーム一覧に戻る",
+    "repeat": "繰り返し",
+    "alarmSound": "アラーム音",
+    "questionCountLabel": "クイズ問題数（2分間・難易度）",
+    "errors": {
+      "noWeekdaySelected": "曜日を1つ以上選択してください。",
+      "weekdayAlreadyUsed": "選択した曜日には、すでに別のアラームがあります。",
+      "invalidInput": "時刻と曜日を確認してください。",
+      "schedulingFailed": "アラームを端末に登録できませんでした。",
+      "saveFailed": "アラームを保存できませんでした。"
+    }
+  },
+  "editAlarm": {
+    "title": "アラームを編集",
+    "backToAlarmsAccessibilityLabel": "アラーム一覧に戻る",
+    "loading": "アラームを読み込んでいます...",
+    "repeat": "繰り返し",
+    "alarmSound": "アラーム音",
+    "questionCountLabel": "クイズ問題数（2分間・難易度）",
+    "deleteButton": "アラームを削除",
+    "deleting": "削除中...",
+    "errors": {
+      "noAlarmSpecified": "編集するアラームが指定されていません。",
+      "noAlarmToDelete": "削除するアラームが指定されていません。",
+      "noWeekdaySelected": "曜日を1つ以上選択してください。",
+      "weekdayAlreadyUsed": "選択した曜日には、すでに別のアラームがあります。",
+      "invalidInput": "時刻と曜日を確認してください。",
+      "notFound": "アラームが見つかりませんでした。",
+      "schedulingFailed": "アラームを端末に登録できませんでした。",
+      "updateFailed": "アラームを更新できませんでした。"
+    }
+  },
+  "quiz": {
+    "answerPlaceholder": "?",
+    "clear": "CLEAR",
+    "correct": "正解!",
+    "dev": {
+      "failure": "[DEV] 失敗",
+      "success": "[DEV] 成功"
+    },
+    "errors": {
+      "processingFailed": "クイズの処理に失敗しました。"
+    },
+    "incorrect": "不正解",
+    "preparing": "クイズを準備中...",
+    "submit": "回答する",
+    "timeRemaining": "あと {{time}}"
+  },
+  "quizFailure": {
+    "backToAlarmButton": "アラームへ戻る",
+    "reasons": {
+      "appQuit": "チャレンジの途中でアプリが終了しました。今日はフィードを見られません。",
+      "badPhotoLimit": "顔写真を確認できなかったため、今日はフィードを見られません。",
+      "noPhotoTimeout": "写真を残せないまま時間切れになりました。今日はフィードを見られません。"
+    },
+    "title": "起床失敗"
+  },
+  "quizFailurePhoto": {
+    "backToAlarmButton": "アラームへ戻る",
+    "feedButton": "フィードへ進む",
+    "status": {
+      "checking": "クイズが時間切れになりました。写真をアップロードしています…",
+      "failed": "クイズは時間切れです。写真の保存には失敗しましたが、撮影した写真はこちらです。",
+      "uploaded": "クイズが時間切れになりました。この写真を失敗記録として保存しました。"
+    },
+    "title": "起床失敗",
+    "uploadingPhoto": "写真を送信中"
+  },
+  "quizSuccess": {
+    "caption": "写真とクイズを完了しました",
+    "homeButton": "ホームへ",
+    "title": "起床成功"
+  },
+  "faceCheck": {
+    "errors": {
+      "processingFailed": "処理に失敗しました。"
+    },
+    "messages": {
+      "initial": "顔が写るように撮影してください。",
+      "cameraPermissionRequired": "カメラ権限が必要です。",
+      "readyToCapture": "写真を撮影してください。"
+    },
+    "timerRemaining": "あと {{time}}",
+    "title": "顔写真を撮影",
+    "attempts": "失敗 {{count}}/{{max}}",
+    "openCameraButton": "カメラを起動",
+    "openingCamera": "起動中..."
+  },
+  "faceCheckSuccess": {
+    "title": "顔判定ができました！",
+    "caption": "{{seconds}}秒後にクイズが開始します！"
+  },
+  "faceCheckFailure": {
+    "title": "顔判定に失敗しました",
+    "caption": "もう一度顔写真を撮影してください",
+    "retryButton": "再度写真を撮影する"
+  },
+  "ringing": {
+    "errors": {
+      "checkFailed": "アラームの確認に失敗しました。"
+    },
+    "timerRemaining": "あと {{time}}",
+    "greeting": "おはよう！",
+    "caption": "写真を撮影するとアラームを止められます",
+    "starting": "起動中...",
+    "startButton": "顔写真を撮る"
+  },
+  "wakeFriends": {
+    "title": "友達を起こす",
+    "description": "起床に失敗した友達にアラームを鳴らせます。",
+    "questionCountLabel": "クイズの問題数",
+    "backToHomeAccessibilityLabel": "ホームに戻る",
+    "failureStatus": "起床失敗中",
+    "ringButton": "鳴らす",
+    "sending": "送信中",
+    "ringAlarmAccessibilityLabel": "{{displayName}}さんにアラームを鳴らす",
+    "alarmSentSuccess": "{{displayName}}さんにアラームを送信しました。",
+    "alarmSentError": "{{displayName}}さんにアラームを送信できませんでした。",
+    "emptyTitle": "今起こせる友達はいません",
+    "emptyText": "起床に失敗した友達がいるとここに表示されます。",
+    "errors": {
+      "loadFailed": "起こせる友達を読み込めませんでした。もう一度お試しください。"
+    }
+  },
+  "addFriend": {
+    "title": "友達を追加",
+    "backToFriendsAccessibilityLabel": "友達一覧に戻る",
+    "description": "ユーザーIDで検索できます。",
+    "searchPlaceholder": "ユーザーID",
+    "searchButton": "検索",
+    "searching": "検索中...",
+    "emptyText": "友達に追加したいユーザーを検索してください。",
+    "becameFriendsSuccess": "{{displayName}}さんと友達になりました。",
+    "requestSentSuccess": "{{displayName}}さんに友達リクエストを送信しました。",
+    "buttonStates": {
+      "friend": "友達",
+      "requestSent": "送信済み",
+      "accept": "承認する",
+      "sendRequest": "リクエスト送信"
+    },
+    "errors": {
+      "notAuthenticated": "ログイン状態を確認できませんでした。もう一度ログインしてください。",
+      "selfRelation": "自分自身は友達に追加できません。",
+      "alreadyFriend": "すでに友達に追加されています。",
+      "unexpectedError": "友達情報を更新できませんでした。もう一度お試しください。",
+      "queryTooShort": "ユーザーIDを2文字以上入力してください。",
+      "noResults": "該当するユーザーが見つかりませんでした。"
+    },
+    "debug": {
+      "addExistingFriend": "[DEBUG] +既存友達",
+      "addSearchResult": "[DEBUG] +検索結果",
+      "mockExistingFriendName": "モック既存友達",
+      "mockSearchResultName": "モック検索結果"
+    }
+  },
+  "photoDetail": {
+    "title": "投稿",
+    "emptyComments": "最初のコメントを送ろう",
+    "replyAccessibilityLabel": "返信する",
+    "cancelReplyAccessibilityLabel": "返信をやめる",
+    "replyingTo": "{{name}}さんに返信中",
+    "commentPlaceholder": "コメントを入力",
+    "sendButton": "送信",
+    "deletePostButton": "この投稿を削除する",
+    "reportButton": "報告する",
+    "blockUserButton": "このユーザーをブロックする",
+    "reportCommentTitle": "このコメントを報告する理由を選んでください",
+    "deleteCommentButton": "このコメントを削除する",
+    "report": {
+      "title": "この投稿を報告する理由を選んでください",
+      "reasons": {
+        "inappropriatePhoto": "不適切な画像",
+        "inappropriateContent": "不適切な内容",
+        "harassment": "嫌がらせ・誹謗中傷",
+        "spam": "スパム",
+        "other": "その他"
+      }
+    },
+    "blockConfirm": {
+      "title": "{{name}}さんをブロックしますか？",
+      "message": "友達関係が解除され、お互いの投稿が見えなくなります。"
+    },
+    "deletePostConfirm": {
+      "title": "この投稿を削除しますか？",
+      "message": "この操作は取り消せません。"
+    },
+    "deleteCommentConfirm": {
+      "title": "このコメントを削除しますか？",
+      "message": "この操作は取り消せません。"
+    },
+    "errors": {
+      "commentRequired": "コメントを入力してください。",
+      "notAuthenticated": "ログイン状態を確認できませんでした。もう一度ログインしてください。",
+      "commentSendFailed": "コメントを送信できませんでした。もう一度お試しください。",
+      "reactionLoadFailed": "リアクションを読み込めませんでした。もう一度お試しください。",
+      "reportSendFailed": "報告を送信できませんでした。もう一度お試しください。",
+      "blockFailed": "ブロックできませんでした。もう一度お試しください。",
+      "deletePostFailed": "投稿を削除できませんでした。もう一度お試しください。",
+      "deleteCommentFailed": "コメントを削除できませんでした。もう一度お試しください。"
+    }
+  },
+  "profileSetup": {
+    "title": "プロフィール設定",
+    "checkingProfile": "プロフィールを確認しています...",
+    "pickPhotoButton": "写真を選ぶ",
+    "avatarCaption": "プロフィールアイコンを選んでください",
+    "displayNameLabel": "ユーザー名",
+    "displayNamePlaceholder": "例：山田 太郎",
+    "userIdLabel": "userID",
+    "userIdPlaceholder": "例：yamada_kun",
+    "userIdHelperText": "友達検索に使用します",
+    "submitButton": "登録する",
+    "submitting": "作成中...",
+    "errors": {
+      "publicUserIdInvalid": "ユーザーIDは3〜20文字の英数字、_、-で入力してください。",
+      "displayNameRequired": "表示名を入力してください。",
+      "displayNameTooLong": "表示名は30文字以内で入力してください。",
+      "userIdAlreadyTaken": "このユーザーIDはすでに使われています。別のIDを入力してください。",
+      "invalidProfileInput": "入力内容を確認してください。",
+      "createProfileFailed": "プロフィールを作成できませんでした。もう一度お試しください。",
+      "checkProfileFailed": "プロフィール状態を確認できませんでした。もう一度お試しください。"
+    }
+  }
+}

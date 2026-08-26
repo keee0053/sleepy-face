@@ -1,6 +1,7 @@
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Pressable,
   SafeAreaView,
@@ -16,28 +17,33 @@ import {
   startGoogleLogin,
   warmUpGoogleLogin,
 } from '@/services/auth';
+import { GoogleIcon } from '@/components/google-icon';
 import { LoadingButtonContent } from '@/components/loading';
 import { getMyProfile } from '@/services/user';
 
-function getLoginErrorMessage(error: unknown): string {
+function getLoginErrorMessage(
+  error: unknown,
+  t: (key: string) => string,
+): string {
   if (error instanceof GoogleLoginError) {
     switch (error.code) {
       case 'login_interrupted':
-        return 'Googleログインが中断されました。もう一度お試しください。';
+        return t('signin.errors.loginInterrupted');
       case 'oauth_url_missing':
       case 'provider_error':
-        return 'Googleログインを開始できませんでした。設定を確認してください。';
+        return t('signin.errors.loginStartFailed');
       case 'missing_auth_tokens':
       case 'session_set_failed':
       case 'unexpected_error':
-        return 'ログインに失敗しました。時間をおいてもう一度お試しください。';
+        return t('signin.errors.loginFailed');
     }
   }
 
-  return 'ログインに失敗しました。時間をおいてもう一度お試しください。';
+  return t('signin.errors.loginFailed');
 }
 
 export default function SigninScreen() {
+  const { t } = useTranslation();
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -63,11 +69,11 @@ export default function SigninScreen() {
         router.replace('/profile-setup');
       }
     } catch (error) {
-      setErrorMessage(getLoginErrorMessage(error));
+      setErrorMessage(getLoginErrorMessage(error, t));
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [t]);
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -77,17 +83,15 @@ export default function SigninScreen() {
       >
         <View style={styles.logoArea}>
           <Image
-            contentFit="cover"
+            contentFit="contain"
             source={require('@/assets/images/app-icon.png')}
             style={styles.logo}
           />
         </View>
 
         <View style={styles.header}>
-          <Text style={styles.title}>SleepyFace</Text>
-          <Text style={styles.description}>
-            クイズに失敗すると寝顔が友達に公開されるアラーム
-          </Text>
+          <Text style={styles.title}>{t('signin.title')}</Text>
+          <Text style={styles.description}>{t('signin.description')}</Text>
         </View>
 
         <View style={styles.footer}>
@@ -101,11 +105,11 @@ export default function SigninScreen() {
               isLoading && styles.buttonDisabled,
             ]}
           >
-            <Text style={styles.googleMark}>G</Text>
+            <GoogleIcon size={20} />
             <LoadingButtonContent
-              label="Googleでログイン"
+              label={t('signin.googleButton')}
               loading={isLoading}
-              loadingLabel="ログイン中..."
+              loadingLabel={t('common.loggingIn')}
               textStyle={styles.googleButtonText}
             />
           </Pressable>
@@ -174,11 +178,6 @@ const styles = StyleSheet.create({
   },
   buttonDisabled: {
     opacity: 0.5,
-  },
-  googleMark: {
-    color: '#171717',
-    fontSize: 20,
-    fontWeight: '800',
   },
   googleButtonText: {
     color: '#171717',
