@@ -35,10 +35,15 @@ function isWakeOutcome(value: string): value is WakeOutcome {
 // issued first (before this function's first await point) so that, called textually
 // before clearWakeChallengeAttempt() the way every call site does, it's dispatched to
 // the native bridge ahead of that clear's removeItem, avoiding a lost-read race.
+export type RecordedWakeAttempt = {
+  firedAt: string;
+  localDay: string;
+};
+
 export async function recordWakeAttemptOutcome(
   outcome: WakeOutcome,
   requiredQuestionCount: number | null = null,
-): Promise<void> {
+): Promise<RecordedWakeAttempt> {
   const attempt = await getWakeChallengeAttempt().catch(() => null);
   const firedAt = attempt?.startedAt ?? new Date().toISOString();
   const localDay = attempt?.localDay ?? getLocalDay(new Date());
@@ -46,7 +51,7 @@ export async function recordWakeAttemptOutcome(
   const { data: userData, error: userError } = await supabase.auth.getUser();
 
   if (userError || !userData.user) {
-    return;
+    return { firedAt, localDay };
   }
 
   await supabase.from('wake_attempt_log').upsert(
@@ -59,6 +64,8 @@ export async function recordWakeAttemptOutcome(
     },
     { onConflict: 'profile_id,local_day' },
   );
+
+  return { firedAt, localDay };
 }
 
 // Today's wake outcome for each of the given friend profile ids, keyed by profile id.

@@ -5,11 +5,16 @@ import { Image, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { LoadingIndicator } from '@/components/loading';
 import { ActionButton, challengeStyles } from '@/components/wake-challenge-ui';
+import { ShareResultButton } from '@/components/share-result-button';
 import { stopRingingAlarm } from '@/services/android-alarm-mechanics';
 import { recordFailureAccessOutcome } from '@/services/friends-feed-access';
 import { recordQuizFailurePhoto } from '@/services/quiz';
 import { getFailureAccessOutcome } from '@/services/wake-challenge-rules';
 import { clearWakeChallengeAttempt } from '@/services/wake-challenge-attempt';
+import {
+  formatAlarmTimeLabel,
+  formatElapsedLabel,
+} from '@/services/wake-result-summary';
 import { logWakeChallengeFailure } from '@/services/wake-friends';
 import { recordWakeAttemptOutcome } from '@/services/wake-status';
 
@@ -34,6 +39,7 @@ export default function QuizFailurePhotoScreen() {
     requiredQuestionCount?: string;
   }>();
   const [uploadStatus, setUploadStatus] = useState<UploadStatus>('checking');
+  const [firedAt, setFiredAt] = useState<string | null>(null);
 
   useEffect(() => {
     // Read (via recordWakeAttemptOutcome) before clearing -- clearWakeChallengeAttempt
@@ -42,7 +48,9 @@ export default function QuizFailurePhotoScreen() {
       ? Number(params.requiredQuestionCount)
       : null;
 
-    recordWakeAttemptOutcome('failure', requiredQuestionCount).catch(() => {});
+    recordWakeAttemptOutcome('failure', requiredQuestionCount)
+      .then((recorded) => setFiredAt(recorded.firedAt))
+      .catch(() => {});
     clearWakeChallengeAttempt().catch(() => {});
   }, [params.requiredQuestionCount]);
 
@@ -147,6 +155,21 @@ export default function QuizFailurePhotoScreen() {
             label={actionLabel}
             onPress={() => router.replace('/home')}
           />
+
+          {!!firedAt && (
+            <ShareResultButton
+              alarmTimeLabel={formatAlarmTimeLabel(firedAt)}
+              elapsedLabel={formatElapsedLabel(firedAt)}
+              outcome="failure"
+              questionCount={
+                params.requiredQuestionCount
+                  ? Number(params.requiredQuestionCount)
+                  : null
+              }
+              streakDays={0}
+              tone="light"
+            />
+          )}
         </View>
       </ScrollView>
     </View>

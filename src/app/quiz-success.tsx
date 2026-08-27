@@ -1,11 +1,17 @@
 import { router, useLocalSearchParams } from 'expo-router';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { ActionButton, challengeStyles } from '@/components/wake-challenge-ui';
+import { ShareResultButton } from '@/components/share-result-button';
 import { clearWakeChallengeAttempt } from '@/services/wake-challenge-attempt';
+import {
+  formatAlarmTimeLabel,
+  formatElapsedLabel,
+} from '@/services/wake-result-summary';
 import { recordWakeAttemptOutcome } from '@/services/wake-status';
+import { getSuccessStreak } from '@/services/wake-streak';
 
 export default function QuizSuccessScreen() {
   const { t } = useTranslation();
@@ -13,6 +19,11 @@ export default function QuizSuccessScreen() {
     activatedByDisplayName?: string;
     requiredQuestionCount?: string;
   }>();
+  const [shareInfo, setShareInfo] = useState<{
+    alarmTimeLabel: string;
+    elapsedLabel: string | null;
+    streakDays: number;
+  } | null>(null);
 
   useEffect(() => {
     // Read (via recordWakeAttemptOutcome) before clearing -- clearWakeChallengeAttempt
@@ -21,7 +32,17 @@ export default function QuizSuccessScreen() {
       ? Number(params.requiredQuestionCount)
       : null;
 
-    recordWakeAttemptOutcome('success', requiredQuestionCount).catch(() => {});
+    recordWakeAttemptOutcome('success', requiredQuestionCount)
+      .then(async ({ firedAt }) => {
+        const streakDays = await getSuccessStreak().catch(() => 0);
+
+        setShareInfo({
+          alarmTimeLabel: formatAlarmTimeLabel(firedAt),
+          elapsedLabel: formatElapsedLabel(firedAt),
+          streakDays,
+        });
+      })
+      .catch(() => {});
     clearWakeChallengeAttempt().catch(() => {});
   }, [params.requiredQuestionCount]);
 
@@ -56,6 +77,21 @@ export default function QuizSuccessScreen() {
             label={t('quizSuccess.homeButton')}
             onPress={() => router.replace('/home')}
           />
+
+          {!!shareInfo && (
+            <ShareResultButton
+              alarmTimeLabel={shareInfo.alarmTimeLabel}
+              elapsedLabel={shareInfo.elapsedLabel}
+              outcome="success"
+              questionCount={
+                params.requiredQuestionCount
+                  ? Number(params.requiredQuestionCount)
+                  : null
+              }
+              streakDays={shareInfo.streakDays}
+              tone="light"
+            />
+          )}
         </View>
       </ScrollView>
     </View>

@@ -59,7 +59,8 @@
           "recordAudioAndroid": false
         }
       ],
-      "expo-localization"
+      "expo-localization",
+      "expo-sharing"
     ],
     "experiments": {
       "typedRoutes": true,

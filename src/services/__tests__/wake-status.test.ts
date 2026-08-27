@@ -59,7 +59,10 @@ describe('recordWakeAttemptOutcome', () => {
     mocks.from.mockReturnValue({ upsert: mocks.upsert });
     mocks.upsert.mockResolvedValue({ error: null });
 
-    await recordWakeAttemptOutcome('success', 10);
+    await expect(recordWakeAttemptOutcome('success', 10)).resolves.toEqual({
+      firedAt: '2026-08-25T22:02:00.000Z',
+      localDay: '2026-08-25',
+    });
 
     expect(mocks.from).toHaveBeenCalledWith('wake_attempt_log');
     expect(mocks.upsert).toHaveBeenCalledWith(
@@ -101,7 +104,10 @@ describe('recordWakeAttemptOutcome', () => {
     });
     mocks.getWakeChallengeAttempt.mockResolvedValue(null);
 
-    await recordWakeAttemptOutcome('success');
+    await expect(recordWakeAttemptOutcome('success')).resolves.toEqual({
+      firedAt: '2026-08-26T00:00:00.000Z',
+      localDay: '2026-08-26',
+    });
 
     expect(mocks.from).not.toHaveBeenCalled();
   });

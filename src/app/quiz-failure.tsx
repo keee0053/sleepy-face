@@ -1,13 +1,18 @@
 import { router, useLocalSearchParams } from 'expo-router';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { ActionButton, challengeStyles } from '@/components/wake-challenge-ui';
+import { ShareResultButton } from '@/components/share-result-button';
 import { stopRingingAlarm } from '@/services/android-alarm-mechanics';
 import { recordFailureAccessOutcome } from '@/services/friends-feed-access';
 import type { WakeChallengeFailureReason } from '@/services/wake-challenge-rules';
 import { clearWakeChallengeAttempt } from '@/services/wake-challenge-attempt';
+import {
+  formatAlarmTimeLabel,
+  formatElapsedLabel,
+} from '@/services/wake-result-summary';
 import { logWakeChallengeFailure } from '@/services/wake-friends';
 import { recordWakeAttemptOutcome } from '@/services/wake-status';
 
@@ -50,6 +55,7 @@ export default function QuizFailureScreen() {
   }>();
 
   const failureReason = getFailureReason(params.reason);
+  const [firedAt, setFiredAt] = useState<string | null>(null);
 
   useEffect(() => {
     // Read (via recordWakeAttemptOutcome) before clearing -- clearWakeChallengeAttempt
@@ -60,7 +66,9 @@ export default function QuizFailureScreen() {
       ? Number(params.requiredQuestionCount)
       : null;
 
-    recordWakeAttemptOutcome('failure', requiredQuestionCount).catch(() => {});
+    recordWakeAttemptOutcome('failure', requiredQuestionCount)
+      .then((recorded) => setFiredAt(recorded.firedAt))
+      .catch(() => {});
     clearWakeChallengeAttempt().catch(() => {});
     recordFailureAccessOutcome(failureReason).catch(() => {});
     logWakeChallengeFailure().catch(() => {});
@@ -103,6 +111,20 @@ export default function QuizFailureScreen() {
             onPress={() => router.replace('/home')}
             variant="secondary"
           />
+
+          {!!firedAt && (
+            <ShareResultButton
+              alarmTimeLabel={formatAlarmTimeLabel(firedAt)}
+              elapsedLabel={formatElapsedLabel(firedAt)}
+              outcome="failure"
+              questionCount={
+                params.requiredQuestionCount
+                  ? Number(params.requiredQuestionCount)
+                  : null
+              }
+              streakDays={0}
+            />
+          )}
         </View>
       </ScrollView>
     </View>

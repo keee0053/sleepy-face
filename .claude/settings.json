@@ -1,5 +1,13 @@
 {
   "enabledPlugins": {
     "expo@claude-plugins-official": true
+  },
+  "permissions": {
+    "allow": [
+      "Bash(adb devices*)",
+      "Bash(npx tsc --noEmit*)",
+      "Bash(git fetch*)",
+      "Bash(npx vitest*)"
+    ]
   }
 }

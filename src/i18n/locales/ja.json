@@ -216,7 +216,8 @@
     },
     "accessibility": {
       "moreActions": "その他の操作",
-      "addFriend": "友達を追加"
+      "addFriend": "友達を追加",
+      "helpRequest": "助けてを送る"
     }
   },
   "alarms": {
@@ -323,6 +324,17 @@
     "homeButton": "ホームへ",
     "title": "起床成功"
   },
+  "wakeResultCard": {
+    "success": "起床成功",
+    "failure": "起床失敗",
+    "elapsed": "起床までの時間",
+    "questionCount": "問題数",
+    "streak": "連続成功",
+    "streakValue": "{{count}}日",
+    "appName": "SleepyFace",
+    "shareButton": "結果をシェア",
+    "sharing": "準備中..."
+  },
   "faceCheck": {
     "errors": {
       "processingFailed": "処理に失敗しました。"
@@ -372,6 +384,27 @@
     "emptyText": "起床に失敗した友達がいるとここに表示されます。",
     "errors": {
       "loadFailed": "起こせる友達を読み込めませんでした。もう一度お試しください。"
+    }
+  },
+  "helpRequest": {
+    "title": "助けてを送る",
+    "backAccessibilityLabel": "閉じる",
+    "description": "友達に通知を送るだけで、アラームは自動設定されません。実際に鳴らすかは相手の判断です。",
+    "friendsLabel": "送る相手",
+    "noFriends": "友達がいません。",
+    "messageLabel": "メッセージ",
+    "messagePlaceholder": "例: 7:10にもう一度起こして",
+    "presets": {
+      "ringAgainIn10": "7:10にもう一度起こして",
+      "callMe": "電話して",
+      "imAwakeButLate": "起きたけど時間ギリギリ、応援して"
+    },
+    "sendButton": "送信する",
+    "sending": "送信中...",
+    "sendSuccess": "送信しました。",
+    "errors": {
+      "loadFailed": "友達一覧を読み込めませんでした。",
+      "sendFailed": "送信できませんでした。もう一度お試しください。"
     }
   },
   "addFriend": {

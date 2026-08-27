@@ -425,6 +425,27 @@ export default function FriendsScreen() {
         </View>
 
         <Pressable
+          accessibilityLabel={t('friends.accessibility.helpRequest')}
+          accessibilityRole="button"
+          onPress={() => router.push('/help-request')}
+          style={({ pressed }) => [
+            styles.helpRequestFab,
+            pressed && styles.fabPressed,
+          ]}
+        >
+          <SymbolView
+            name={{
+              ios: 'hand.raised.fill',
+              android: 'front_hand',
+              web: 'front_hand',
+            }}
+            size={22}
+            tintColor="#ffffff"
+            type="monochrome"
+          />
+        </Pressable>
+
+        <Pressable
           accessibilityLabel={t('friends.accessibility.addFriend')}
           accessibilityRole="button"
           onPress={() => router.push('/add-friend')}
@@ -639,6 +660,19 @@ const styles = StyleSheet.create({
     position: 'absolute',
     right: 24,
     width: 56,
+    zIndex: 20,
+  },
+  helpRequestFab: {
+    alignItems: 'center',
+    backgroundColor: '#171717',
+    borderRadius: 26,
+    bottom: 154,
+    elevation: 8,
+    height: 52,
+    justifyContent: 'center',
+    position: 'absolute',
+    right: 26,
+    width: 52,
     zIndex: 20,
   },
   fabPressed: {

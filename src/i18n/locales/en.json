@@ -216,7 +216,8 @@
     },
     "accessibility": {
       "moreActions": "More actions",
-      "addFriend": "Add friend"
+      "addFriend": "Add friend",
+      "helpRequest": "Send a help request"
     }
   },
   "alarms": {
@@ -323,6 +324,17 @@
     "homeButton": "Go Home",
     "title": "Wake-Up Success"
   },
+  "wakeResultCard": {
+    "success": "Wake-Up Success",
+    "failure": "Wake-Up Failed",
+    "elapsed": "Time to Wake",
+    "questionCount": "Questions",
+    "streak": "Streak",
+    "streakValue": "{{count}} days",
+    "appName": "SleepyFace",
+    "shareButton": "Share Result",
+    "sharing": "Preparing..."
+  },
   "faceCheck": {
     "errors": {
       "processingFailed": "Processing failed."
@@ -372,6 +384,27 @@
     "emptyText": "Friends who fail to wake up will show up here.",
     "errors": {
       "loadFailed": "Couldn't load friends you can wake. Please try again."
+    }
+  },
+  "helpRequest": {
+    "title": "Send a Help Request",
+    "backAccessibilityLabel": "Close",
+    "description": "This just sends a notification to your friends -- no alarm is set automatically. It's up to them whether to actually ring it.",
+    "friendsLabel": "Send to",
+    "noFriends": "You have no friends yet.",
+    "messageLabel": "Message",
+    "messagePlaceholder": "e.g. Ring me again at 7:10",
+    "presets": {
+      "ringAgainIn10": "Ring me again at 7:10",
+      "callMe": "Call me",
+      "imAwakeButLate": "I'm awake but running late, cheer me on"
+    },
+    "sendButton": "Send",
+    "sending": "Sending...",
+    "sendSuccess": "Sent.",
+    "errors": {
+      "loadFailed": "Couldn't load your friends.",
+      "sendFailed": "Couldn't send it. Please try again."
     }
   },
   "addFriend": {
