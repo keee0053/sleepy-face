@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { getDevMode, setDevMode, toggleDevMode } from '../dev-mode';
 
@@ -61,5 +61,37 @@ describe('Dev Mode service', () => {
 
     await expect(toggleDevMode()).resolves.toBe(false);
     expect(mocks.setItem).toHaveBeenCalledWith('sleepy-face:dev-mode', 'false');
+  });
+
+  // __DEV__ is React Native's real build-type flag (false in any release build,
+  // production EAS included) -- these confirm the dev-only shortcuts these functions
+  // gate (instant quiz pass/fail, fake block/unblock, mock friends, a test alarm) stay
+  // unreachable in a shipped build no matter what's in AsyncStorage.
+  describe('in a release build (__DEV__ === false)', () => {
+    beforeEach(() => {
+      vi.stubGlobal('__DEV__', false);
+    });
+
+    afterEach(() => {
+      vi.unstubAllGlobals();
+    });
+
+    it('reads disabled even when AsyncStorage says otherwise', async () => {
+      mocks.getItem.mockResolvedValue('true');
+
+      await expect(getDevMode()).resolves.toBe(false);
+      expect(mocks.getItem).not.toHaveBeenCalled();
+    });
+
+    it('refuses to persist enabling dev mode', async () => {
+      await setDevMode(true);
+
+      expect(mocks.setItem).not.toHaveBeenCalled();
+    });
+
+    it('refuses to toggle dev mode on', async () => {
+      await expect(toggleDevMode()).resolves.toBe(false);
+      expect(mocks.setItem).not.toHaveBeenCalled();
+    });
   });
 });
