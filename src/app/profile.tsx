@@ -347,7 +347,7 @@ export default function ProfileScreen() {
         <View style={styles.header}>
           <Text style={styles.title}>{t('profile.title')}</Text>
 
-          {isDevUserId(profile?.userId) && !isDevMode && (
+          {__DEV__ && isDevUserId(profile?.userId) && !isDevMode && (
             <Pressable accessibilityRole="button" onPress={handleEnableDevMode}>
               <Text style={styles.debugToggleText}>
                 {t('profile.debug.enable')}
