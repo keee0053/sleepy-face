@@ -20,6 +20,14 @@ import java.time.Instant
 
 private const val LOG_TAG = "AlarmRingingService"
 
+// A last-resort fallback for resolveAlarmToneUri(): the fixed content:// path Android's
+// own Settings app writes the alarm tone to, so reading it doesn't go through
+// RingtoneManager's lazy "default" resolution (the thing the other fallbacks are already
+// dodging -- see resolveAlarmToneUri's comment). Reported by a closed tester whose device
+// silenced the alarm entirely on "device default" even after those fallbacks.
+private val FALLBACK_SYSTEM_ALARM_URI: Uri =
+  Uri.parse("content://settings/system/alarm_alert")
+
 class AlarmRingingService : Service() {
   private val handler = Handler(Looper.getMainLooper())
   private var mediaPlayer: MediaPlayer? = null
@@ -143,6 +151,7 @@ class AlarmRingingService : Service() {
     return safeGetFirstRingtoneUri(RingtoneManager.TYPE_ALARM)
       ?: safeGetFirstRingtoneUri(RingtoneManager.TYPE_NOTIFICATION)
       ?: safeGetValidRingtoneUri()
+      ?: FALLBACK_SYSTEM_ALARM_URI
   }
 
   private fun safeGetFirstRingtoneUri(type: Int): Uri? {

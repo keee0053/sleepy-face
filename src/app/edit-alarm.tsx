@@ -456,7 +456,10 @@ export default function EditAlarmScreen() {
                         key={id}
                         onPress={() => {
                           setSoundId(id);
-                          previewAlarmSound(id);
+                          previewAlarmSound(
+                            id,
+                            t('editAlarm.alarmSoundDefaultNotPreviewable'),
+                          );
                         }}
                         style={[
                           styles.soundOption,

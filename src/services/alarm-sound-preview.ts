@@ -1,4 +1,5 @@
 import { createAudioPlayer } from 'expo-audio';
+import { Platform, ToastAndroid } from 'react-native';
 
 import type { AlarmSoundId } from '@/constants/alarm-sounds';
 
@@ -14,10 +15,20 @@ const ALARM_SOUND_PREVIEW_SOURCES: Partial<Record<AlarmSoundId, number>> = {
 // Lets a user audition an Alarm Sound option by tapping it, without touching the native
 // alarm-ringing scheduler at all. Fire-and-forget: each tap gets its own short-lived
 // player, released once playback finishes so rapid re-taps don't leak players.
-export function previewAlarmSound(soundId: AlarmSoundId): void {
+export function previewAlarmSound(
+  soundId: AlarmSoundId,
+  notPreviewableMessage?: string,
+): void {
   const source = ALARM_SOUND_PREVIEW_SOURCES[soundId];
 
   if (source == null) {
+    // A silent tap reads as broken (reported by a closed tester) since there's no
+    // in-app way to audition the device's own default tone -- a short explanation
+    // beats doing nothing.
+    if (notPreviewableMessage && Platform.OS === 'android') {
+      ToastAndroid.show(notPreviewableMessage, ToastAndroid.SHORT);
+    }
+
     return;
   }
 

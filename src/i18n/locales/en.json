@@ -251,6 +251,7 @@
     "backToAlarmsAccessibilityLabel": "Back to alarm list",
     "repeat": "Repeat",
     "alarmSound": "Alarm sound",
+    "alarmSoundDefaultNotPreviewable": "The device default sound can't be previewed here. It plays when the alarm actually rings.",
     "questionCountLabel": "Quiz question count (2 min · difficulty)",
     "errors": {
       "noWeekdaySelected": "Please select at least one day of the week.",
@@ -266,6 +267,7 @@
     "loading": "Loading alarm...",
     "repeat": "Repeat",
     "alarmSound": "Alarm sound",
+    "alarmSoundDefaultNotPreviewable": "The device default sound can't be previewed here. It plays when the alarm actually rings.",
     "questionCountLabel": "Quiz question count (2 min · difficulty)",
     "deleteButton": "Delete alarm",
     "deleting": "Deleting...",

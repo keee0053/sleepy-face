@@ -251,6 +251,7 @@
     "backToAlarmsAccessibilityLabel": "アラーム一覧に戻る",
     "repeat": "繰り返し",
     "alarmSound": "アラーム音",
+    "alarmSoundDefaultNotPreviewable": "端末のデフォルト音はここでは再生できません。実際のアラーム時に鳴ります。",
     "questionCountLabel": "クイズ問題数（2分間・難易度）",
     "errors": {
       "noWeekdaySelected": "曜日を1つ以上選択してください。",
@@ -266,6 +267,7 @@
     "loading": "アラームを読み込んでいます...",
     "repeat": "繰り返し",
     "alarmSound": "アラーム音",
+    "alarmSoundDefaultNotPreviewable": "端末のデフォルト音はここでは再生できません。実際のアラーム時に鳴ります。",
     "questionCountLabel": "クイズ問題数（2分間・難易度）",
     "deleteButton": "アラームを削除",
     "deleting": "削除中...",

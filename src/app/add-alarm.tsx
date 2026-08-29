@@ -351,7 +351,10 @@ export default function AddAlarmScreen() {
                     key={id}
                     onPress={() => {
                       setSoundId(id);
-                      previewAlarmSound(id);
+                      previewAlarmSound(
+                        id,
+                        t('addAlarm.alarmSoundDefaultNotPreviewable'),
+                      );
                     }}
                     style={[
                       styles.soundOption,
