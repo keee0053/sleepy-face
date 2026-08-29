@@ -505,11 +505,13 @@ export default function EditAlarmScreen() {
                   textStyle={styles.deleteButtonText}
                 />
               </Pressable>
+
+              {errorMessage && (
+                <Text style={styles.errorText}>{errorMessage}</Text>
+              )}
             </ScrollView>
           </>
         )}
-
-        {errorMessage && <Text style={styles.errorText}>{errorMessage}</Text>}
 
         <View pointerEvents="none" style={styles.footerDivider} />
 

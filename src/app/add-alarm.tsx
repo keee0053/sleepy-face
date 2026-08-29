@@ -381,9 +381,9 @@ export default function AddAlarmScreen() {
               value={questionCount}
             />
           </View>
-        </ScrollView>
 
-        {errorMessage && <Text style={styles.errorText}>{errorMessage}</Text>}
+          {errorMessage && <Text style={styles.errorText}>{errorMessage}</Text>}
+        </ScrollView>
 
         <View pointerEvents="none" style={styles.footerDivider} />
 
