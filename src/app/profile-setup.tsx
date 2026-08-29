@@ -33,7 +33,6 @@ import {
   UserServiceError,
   completeInitialProfileSetup,
   getMyProfile,
-  normalizePublicUserId,
   validateInitialSetupInput,
   type InitialSetupValidationErrorCode,
 } from '@/services/user';
@@ -134,8 +133,14 @@ export default function ProfileSetupScreen() {
     };
   }, [t]);
 
+  // Not normalizing here on every keystroke is deliberate: transforming a controlled
+  // TextInput's value synchronously in onChangeText is a known trigger for character
+  // duplication with the Samsung keyboard's IME composition (reported on a Galaxy S24
+  // while switching to uppercase mid-word). validateInitialSetupInput already
+  // normalizes (trim + lowercase) at submission time, so live normalization here isn't
+  // needed for correctness.
   const handlePublicUserIdChange = useCallback((value: string) => {
-    setPublicUserId(normalizePublicUserId(value));
+    setPublicUserId(value);
   }, []);
 
   const handlePickPhoto = useCallback(async () => {
