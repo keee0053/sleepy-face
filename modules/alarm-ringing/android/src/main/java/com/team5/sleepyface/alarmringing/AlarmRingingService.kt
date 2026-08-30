@@ -32,6 +32,13 @@ class AlarmRingingService : Service() {
   private val handler = Handler(Looper.getMainLooper())
   private var mediaPlayer: MediaPlayer? = null
 
+  // The action/alarmId/soundId this instance last started ringing with, kept so a swiped
+  // notification can be re-armed as the same real alarm (not a synthetic test alarm) --
+  // see handleNotificationSwiped().
+  private var currentAction: String? = null
+  private var currentAlarmId: String? = null
+  private var currentSoundId: String? = null
+
   private val safetyStop = Runnable {
     stopRinging()
   }
@@ -43,12 +50,44 @@ class AlarmRingingService : Service() {
       ACTION_FIRE_TEST_ALARM, ACTION_FIRE_SAVED_ALARM -> {
         val alarmId = intent.getStringExtra(EXTRA_ALARM_ID) ?: return START_NOT_STICKY
         val soundId = intent.getStringExtra(EXTRA_SOUND_ID)
+        currentAction = intent.action
+        currentAlarmId = alarmId
+        currentSoundId = soundId
         startRinging(alarmId, soundId)
       }
       ACTION_STOP_RINGING -> stopRinging()
+      ACTION_NOTIFICATION_SWIPED -> handleNotificationSwiped()
     }
 
     return START_NOT_STICKY
+  }
+
+  // setOngoing(true) no longer keeps this notification pinned on Android 14+ (see
+  // buildNotification's comment) -- reported by a closed tester (Android 16) who had to
+  // reboot to silence an alarm after swiping it away. Relaunching the ringing Activity
+  // straight from this delete intent doesn't work either: it's a PendingIntent-triggered
+  // Activity start with no visible caller, which Android's Background Activity Launch
+  // policy blocks outright (confirmed via logcat: "Background activity launch blocked!
+  // ... resultIfPiSenderAllowsBal: BAL_BLOCK"). A fresh AlarmManager trigger sidesteps
+  // that entirely, since setFullScreenIntent's whole purpose is auto-launching from the
+  // background -- so this quiets the current tone and re-arms the same alarm a short
+  // delay later through that normal path, instead of either leaving it stuck ringing or
+  // letting a swipe silently end the wake challenge for good.
+  private fun handleNotificationSwiped() {
+    val action = currentAction
+    val alarmId = currentAlarmId
+
+    if (action != null && alarmId != null) {
+      AlarmScheduler.scheduleImmediateRefire(
+        applicationContext,
+        action,
+        alarmId,
+        currentSoundId,
+        NOTIFICATION_SWIPE_REFIRE_DELAY_MS,
+      )
+    }
+
+    stopRinging()
   }
 
   override fun onDestroy() {
@@ -201,7 +240,31 @@ class AlarmRingingService : Service() {
       .setAutoCancel(false)
       .setFullScreenIntent(createRingingPendingIntent(alarmId, startedAt), true)
       .setContentIntent(createRingingPendingIntent(alarmId, startedAt))
+      // setOngoing(true) alone no longer keeps this notification pinned: since Android 14
+      // the system lets a user swipe away a foreground service's notification regardless.
+      // Reported by a closed tester (Android 16) -- swiping it left the alarm still
+      // ringing with no way to reach the stop flow short of rebooting. Routed to
+      // handleNotificationSwiped() (a Service start, not an Activity launch, so it isn't
+      // subject to Android's Background Activity Launch restrictions) which quiets this
+      // instance and re-arms the same alarm moments later through the normal
+      // setFullScreenIntent path, instead of leaving it stuck or letting a swipe become a
+      // free way to dodge the wake challenge.
+      .setDeleteIntent(createNotificationSwipedPendingIntent())
       .build()
+
+  private fun createNotificationSwipedPendingIntent(): PendingIntent {
+    val intent = Intent(this, AlarmRingingService::class.java).apply {
+      action = ACTION_NOTIFICATION_SWIPED
+    }
+
+    return PendingIntent.getService(
+      this,
+      DELETE_INTENT_REQUEST_CODE,
+      intent,
+      PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+    )
+  }
+
   private fun createRingingPendingIntent(alarmId: String, startedAt: String): PendingIntent {
     val ringingUri = Uri.parse("sleepyface:///ringing")
       .buildUpon()

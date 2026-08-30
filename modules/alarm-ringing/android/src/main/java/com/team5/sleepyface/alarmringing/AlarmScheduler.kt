@@ -67,6 +67,57 @@ object AlarmScheduler {
     )
   }
 
+  // Re-arms the same real alarm a short delay after its notification was swiped away
+  // (see AlarmRingingService.handleNotificationSwiped) -- reuses the caller's own
+  // action/alarmId/soundId instead of minting a new test alarm, and skips the
+  // isRinging() guard scheduleTestAlarmAfterSeconds has, since this is always called
+  // right before that same ringing instance stops itself.
+  fun scheduleImmediateRefire(
+    context: Context,
+    action: String,
+    alarmId: String,
+    soundId: String?,
+    delayMillis: Long,
+  ) {
+    if (!canScheduleExactAlarms(context)) {
+      return
+    }
+
+    val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
+    val triggerAtMillis = System.currentTimeMillis() + delayMillis
+    val scheduledFor = Instant.ofEpochMilli(triggerAtMillis).toString()
+
+    val pendingIntent = createRefirePendingIntent(context, action, alarmId, scheduledFor, soundId)
+    val alarmClockInfo = AlarmManager.AlarmClockInfo(
+      triggerAtMillis,
+      createShowIntent(context, alarmId, scheduledFor),
+    )
+
+    alarmManager.setAlarmClock(alarmClockInfo, pendingIntent)
+  }
+
+  private fun createRefirePendingIntent(
+    context: Context,
+    action: String,
+    alarmId: String,
+    scheduledFor: String,
+    soundId: String?,
+  ): PendingIntent {
+    val intent = Intent(context, AlarmRingingReceiver::class.java).apply {
+      this.action = action
+      putExtra(EXTRA_ALARM_ID, alarmId)
+      putExtra(EXTRA_SCHEDULED_FOR, scheduledFor)
+      soundId?.let { putExtra(EXTRA_SOUND_ID, it) }
+    }
+
+    return PendingIntent.getBroadcast(
+      context,
+      REFIRE_REQUEST_CODE,
+      intent,
+      PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+    )
+  }
+
   fun cancelScheduledTestAlarm(context: Context) {
     val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
     alarmManager.cancel(createTestAlarmPendingIntent(context, null, null, null))
