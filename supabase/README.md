@@ -85,6 +85,23 @@
 
 通知は失敗したユーザーの表示名をタイトル、`failed their wake-up challenge 😴` を本文として送ります。写真 ID や画面遷移用 data payload は含まれないため、通知タップから投稿詳細を直接開く機能はありません。
 
+## スケーリング用インデックス（2026-08-31）
+
+1000人規模のアクティブユーザーを見据えた負荷調査で見つかった、未インデックスの外部キー列（`friends_relations.profile_id`/`friend_profile_id`、`failure_log_entries.profile_id`、`photos.profile_id`、`comments.photo_id`、`photo_reactions.photo_id`）にインデックスを追加します。今の規模では体感できませんが、朝の時間帯に集中するアクセスパターンで将来ボトルネックになる箇所です。
+
+1. SQLエディタを開く: https://supabase.com/dashboard/project/yqgxspuwhanfdzvvmeiy/sql/new
+2. `sql/2026-08-31_scaling_indexes.sql` の中身を全部コピーしてSQLエディタに貼り付け、**Run**をクリック。「Success. No rows returned」と出れば成功
+3. 確認: 以下をSQLエディタで実行し、6件のインデックスが出ることを確認する
+
+```sql
+select indexname from pg_indexes
+where schemaname = 'public'
+  and indexname like 'idx_%'
+order by indexname;
+```
+
+`CREATE INDEX IF NOT EXISTS`を使っているため、既存データがある状態で実行してもエラーにならず、再実行しても安全です。
+
 ## スキーマ管理上の注意
 
 現行クライアントが使用する `profiles`、`photos`、`friends_relations`、`failure-photos`、`create_profile` のベース作成 SQL は、このリポジトリにはありません。さらに現行クライアントは次を必要とします。

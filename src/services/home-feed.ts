@@ -30,6 +30,8 @@ export type FriendsFeedItem = {
 
 export type HomeFeedServiceErrorCode = 'not_authenticated' | 'unexpected_error';
 
+const FEED_QUERY_LIMIT = 200;
+
 type PhotoRow = {
   id: string;
   image_url: string;
@@ -102,7 +104,11 @@ export async function listFriendsFeed(): Promise<FriendsFeedItem[]> {
     .from('photos')
     .select('id, image_url, created_at, profile_id')
     .in('profile_id', feedProfileIds)
-    .order('created_at', { ascending: false });
+    .order('created_at', { ascending: false })
+    // Defense in depth: photos already age out after 14 days (see
+    // delete-old-photos), so this normally never binds, but caps the query in case
+    // that cleanup ever lags or a viewer has an unusually large/active friend group.
+    .limit(FEED_QUERY_LIMIT);
 
   if (photoError) {
     throw mapHomeFeedError(photoError);

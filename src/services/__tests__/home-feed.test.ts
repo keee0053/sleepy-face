@@ -6,10 +6,23 @@ const mocks = vi.hoisted(() => ({
   from: vi.fn(),
   getUser: vi.fn(),
   in: vi.fn(),
+  limit: vi.fn(),
   listFriendRelations: vi.fn(),
   order: vi.fn(),
   select: vi.fn(),
 }));
+
+// Matches the `.order(...).limit(...)` chain in listFriendsFeed's photos query --
+// every test that previously resolved directly off `.order(...)` now needs the
+// `.order(...)` mock to return an object exposing `.limit(...)` that resolves instead.
+function mockPhotosQuery(result: { data: unknown; error: unknown }) {
+  const limit = vi.fn().mockResolvedValue(result);
+  const order = vi.fn().mockReturnValue({ limit });
+  const inFn = vi.fn().mockReturnValue({ order });
+  const select = vi.fn().mockReturnValue({ in: inFn });
+
+  return { in: inFn, limit, order, select };
+}
 
 vi.mock('@/lib/supabase', () => ({
   supabase: {
@@ -53,14 +66,11 @@ describe('home feed service', () => {
     mockAuthenticatedUser();
     mocks.listFriendRelations.mockResolvedValue([]);
 
-    const photosOrder = vi.fn().mockResolvedValue({ data: [], error: null });
-    const photosIn = vi.fn().mockReturnValue({ order: photosOrder });
-    mocks.from.mockReturnValue({
-      select: vi.fn().mockReturnValue({ in: photosIn }),
-    });
+    const photosQuery = mockPhotosQuery({ data: [], error: null });
+    mocks.from.mockReturnValue({ select: photosQuery.select });
 
     await expect(listFriendsFeed()).resolves.toEqual([]);
-    expect(photosIn).toHaveBeenCalledWith('profile_id', ['profile-a']);
+    expect(photosQuery.in).toHaveBeenCalledWith('profile_id', ['profile-a']);
   });
 
   it('lists friends photos newest first, joined with friend profile info', async () => {
@@ -75,7 +85,7 @@ describe('home feed service', () => {
       },
     ]);
 
-    const photosOrder = vi.fn().mockResolvedValue({
+    const photosQuery = mockPhotosQuery({
       data: [
         {
           created_at: '2026-08-19T00:00:00.000Z',
@@ -86,8 +96,7 @@ describe('home feed service', () => {
       ],
       error: null,
     });
-    const photosIn = vi.fn().mockReturnValue({ order: photosOrder });
-    const photosSelect = vi.fn().mockReturnValue({ in: photosIn });
+    const photosSelect = photosQuery.select;
 
     const profilesIn = vi.fn().mockResolvedValue({
       data: [
@@ -158,13 +167,14 @@ describe('home feed service', () => {
       },
     ]);
 
-    expect(photosIn).toHaveBeenCalledWith('profile_id', [
+    expect(photosQuery.in).toHaveBeenCalledWith('profile_id', [
       'profile-b',
       'profile-a',
     ]);
-    expect(photosOrder).toHaveBeenCalledWith('created_at', {
+    expect(photosQuery.order).toHaveBeenCalledWith('created_at', {
       ascending: false,
     });
+    expect(photosQuery.limit).toHaveBeenCalledWith(200);
     expect(profilesIn).toHaveBeenCalledWith('id', ['profile-b', 'profile-a']);
     expect(reactionsIn).toHaveBeenCalledWith('photo_id', ['photo-1']);
     expect(commentsIn).toHaveBeenCalledWith('photo_id', ['photo-1']);
@@ -182,7 +192,7 @@ describe('home feed service', () => {
       },
     ]);
 
-    const photosOrder = vi.fn().mockResolvedValue({
+    const photosQuery = mockPhotosQuery({
       data: [
         {
           created_at: '2026-08-19T00:00:00.000Z',
@@ -193,8 +203,7 @@ describe('home feed service', () => {
       ],
       error: null,
     });
-    const photosIn = vi.fn().mockReturnValue({ order: photosOrder });
-    const photosSelect = vi.fn().mockReturnValue({ in: photosIn });
+    const photosSelect = photosQuery.select;
 
     const profilesIn = vi.fn().mockResolvedValue({ data: [], error: null });
     const emptyIn = vi.fn().mockResolvedValue({ data: [], error: null });
@@ -244,13 +253,11 @@ describe('home feed service', () => {
       },
     ]);
 
-    const photosOrder = vi
-      .fn()
-      .mockResolvedValue({ data: null, error: new Error('boom') });
-    const photosIn = vi.fn().mockReturnValue({ order: photosOrder });
-    mocks.from.mockReturnValue({
-      select: vi.fn().mockReturnValue({ in: photosIn }),
+    const photosQuery = mockPhotosQuery({
+      data: null,
+      error: new Error('boom'),
     });
+    mocks.from.mockReturnValue({ select: photosQuery.select });
 
     await expect(listFriendsFeed()).rejects.toSatisfy((error) => {
       expectServiceError(error, 'unexpected_error');
@@ -270,7 +277,7 @@ describe('home feed service', () => {
       },
     ]);
 
-    const photosOrder = vi.fn().mockResolvedValue({
+    const photosQuery = mockPhotosQuery({
       data: [
         {
           created_at: '2026-08-19T00:00:00.000Z',
@@ -281,7 +288,6 @@ describe('home feed service', () => {
       ],
       error: null,
     });
-    const photosIn = vi.fn().mockReturnValue({ order: photosOrder });
     const profilesIn = vi.fn().mockResolvedValue({ data: [], error: null });
     const reactionsIn = vi
       .fn()
@@ -289,7 +295,7 @@ describe('home feed service', () => {
 
     mocks.from.mockImplementation((table: string) => {
       if (table === 'photos') {
-        return { select: vi.fn().mockReturnValue({ in: photosIn }) };
+        return { select: photosQuery.select };
       }
 
       if (table === 'profiles') {
