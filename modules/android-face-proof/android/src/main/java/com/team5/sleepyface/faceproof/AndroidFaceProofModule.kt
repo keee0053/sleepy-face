@@ -17,15 +17,15 @@ class AndroidFaceProofModule : Module() {
   override fun definition() = ModuleDefinition {
     Name("AndroidFaceProof")
 
-    AsyncFunction("checkFaceProof") { localPhotoUri: String, promise: Promise ->
-      checkFaceProof(localPhotoUri, promise)
+    AsyncFunction("checkFaceProof") { localPhotoUri: String, useAccurateMode: Boolean, promise: Promise ->
+      checkFaceProof(localPhotoUri, useAccurateMode, promise)
     }
   }
 
   private val context: Context?
     get() = appContext.reactContext ?: appContext.currentActivity
 
-  private fun checkFaceProof(localPhotoUri: String, promise: Promise) {
+  private fun checkFaceProof(localPhotoUri: String, useAccurateMode: Boolean, promise: Promise) {
     val imageUri = parseLocalFileUri(localPhotoUri)
 
     if (imageUri == null) {
@@ -54,15 +54,21 @@ class AndroidFaceProofModule : Module() {
       return
     }
 
+    val performanceMode = if (useAccurateMode) {
+      FaceDetectorOptions.PERFORMANCE_MODE_ACCURATE
+    } else {
+      FaceDetectorOptions.PERFORMANCE_MODE_FAST
+    }
+
     Log.d(
       TAG,
       "checking face proof: uri=$imageUri width=${image.width} height=${image.height} " +
-        "rotation=${image.rotationDegrees}",
+        "rotation=${image.rotationDegrees} useAccurateMode=$useAccurateMode",
     )
 
     val detector = FaceDetection.getClient(
       FaceDetectorOptions.Builder()
-        .setPerformanceMode(FaceDetectorOptions.PERFORMANCE_MODE_FAST)
+        .setPerformanceMode(performanceMode)
         .build(),
     )
 

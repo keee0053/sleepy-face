@@ -13,7 +13,7 @@ For the complete flow and failure outcomes, see [`current_implementation_spec.md
 - TypeScript boundary: `src/services/face-proof.ts`
 - Native Expo Module: `modules/android-face-proof/`
 - Integrated screen: `src/app/face-check.tsx`
-- Detector: Google ML Kit Face Detection with `PERFORMANCE_MODE_FAST`
+- Detector: Google ML Kit Face Detection. Uses `PERFORMANCE_MODE_FAST` for the first two Bad Photo Attempts, then `PERFORMANCE_MODE_ACCURATE` for the third and final attempt before the Wake Up Challenge fails outright — a wake-up selfie is often dim and off-angle, so the last chance trades some speed for a better chance of recognizing a genuine face.
 - Accepted input: a readable local `file://` image
 - Pass rule: one or more detected faces
 - Supported runtime: rebuilt native Android app only

@@ -33,7 +33,10 @@ export type NativeFaceProofResult =
     };
 
 export type NativeFaceProofDetector = {
-  checkFaceProof(localPhotoUri: string): Promise<NativeFaceProofResult>;
+  checkFaceProof(
+    localPhotoUri: string,
+    useAccurateMode: boolean,
+  ): Promise<NativeFaceProofResult>;
 };
 
 const nativeDetector =
@@ -72,6 +75,7 @@ function normalizeNativeResult(result: NativeFaceProofResult): FaceProofResult {
 export async function checkFaceProofWithDetector(
   localPhotoUri: string,
   detector: NativeFaceProofDetector | null = nativeDetector,
+  useAccurateMode = false,
 ): Promise<FaceProofResult> {
   if (!detector) {
     return {
@@ -81,7 +85,10 @@ export async function checkFaceProofWithDetector(
   }
 
   try {
-    const nativeResult = await detector.checkFaceProof(localPhotoUri);
+    const nativeResult = await detector.checkFaceProof(
+      localPhotoUri,
+      useAccurateMode,
+    );
 
     if (nativeResult.status === 'failed') {
       console.warn('[face-proof] native check failed', nativeResult);
@@ -98,10 +105,15 @@ export async function checkFaceProofWithDetector(
   }
 }
 
+// The first attempts use ML Kit's fast (lower-accuracy) mode for a snappy retry loop.
+// A wake-up selfie is often dim and off-angle, so fast mode can miss a genuine face --
+// the last attempt before the Wake Up Challenge fails outright switches to accurate
+// mode, trading a bit of speed for a better chance of recognizing a real face.
 export function checkFaceProof(
   localPhotoUri: string,
+  useAccurateMode = false,
 ): Promise<FaceProofResult> {
-  return checkFaceProofWithDetector(localPhotoUri);
+  return checkFaceProofWithDetector(localPhotoUri, undefined, useAccurateMode);
 }
 
 export function shouldRetainFaceProofPhoto(

@@ -31,7 +31,24 @@ describe('Face Proof service', () => {
       faceCount: 2,
       status: 'passed',
     });
-    expect(detector.checkFaceProof).toHaveBeenCalledWith('file:///photo.jpg');
+    expect(detector.checkFaceProof).toHaveBeenCalledWith(
+      'file:///photo.jpg',
+      false,
+    );
+  });
+
+  it('passes useAccurateMode through to the native detector', async () => {
+    const detector = createDetector({
+      faceCount: 1,
+      status: 'passed',
+    });
+
+    await checkFaceProofWithDetector('file:///photo.jpg', detector, true);
+
+    expect(detector.checkFaceProof).toHaveBeenCalledWith(
+      'file:///photo.jpg',
+      true,
+    );
   });
 
   it('fails Face Proof when the native detector reports no faces', async () => {

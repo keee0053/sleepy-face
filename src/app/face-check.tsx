@@ -183,7 +183,14 @@ export default function FaceCheckScreen() {
       const savedPhoto = await saveFailurePhotoLocally(photo.uri);
 
       pauseTimer();
-      const nextFaceProofResult = await checkFaceProof(savedPhoto.uri);
+      // The last attempt before the challenge ends in failure trades a bit of speed
+      // for accuracy -- a dim, off-angle wake-up selfie is more likely to be missed by
+      // fast mode, and this is the last chance to recognize a genuine face.
+      const isFinalAttempt = badPhotoAttempts >= MAX_BAD_PHOTO_ATTEMPTS - 1;
+      const nextFaceProofResult = await checkFaceProof(
+        savedPhoto.uri,
+        isFinalAttempt,
+      );
 
       setIsCameraOpen(false);
 
