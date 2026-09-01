@@ -81,6 +81,11 @@ export default function RingingScreen() {
   const [ringingState, setRingingState] = useState<RingingAlarmState | null>(
     null,
   );
+  // 'checking' keeps the Start button disabled while the native ringing state is still
+  // being fetched, so it doesn't briefly render as pressable before that check resolves.
+  const [ringingCheckStatus, setRingingCheckStatus] = useState<
+    'checking' | 'confirmed' | 'not-ringing'
+  >('checking');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isStarting, setIsStarting] = useState(false);
   const timer = useAlarmTimer();
@@ -111,12 +116,6 @@ export default function RingingScreen() {
   }, [pulse]);
 
   useEffect(() => {
-    if (params.alarmId) {
-      recordSavedAlarmFired(params.alarmId).catch(() => {});
-    }
-  }, [params.alarmId]);
-
-  useEffect(() => {
     let isActive = true;
 
     const timeout = setTimeout(() => {
@@ -134,6 +133,28 @@ export default function RingingScreen() {
 
           setRingingState(nextRingingState);
 
+          // The show intent behind AlarmClockInfo (and the system "next alarm" UI that
+          // can trigger it) opens this same /ringing route before the alarm actually
+          // fires. AlarmRingingState is only set from the real alarm trigger, so it's
+          // the one signal that tells apart a genuine ringing session from that early
+          // entry -- both the Wake Up Challenge timer and recordSavedAlarmFired stay
+          // gated on it matching this route's alarmId.
+          const isGenuinelyRinging =
+            nextRingingState !== null &&
+            (!params.alarmId || nextRingingState.alarmId === params.alarmId);
+
+          setRingingCheckStatus(
+            isGenuinelyRinging ? 'confirmed' : 'not-ringing',
+          );
+
+          if (!isGenuinelyRinging) {
+            return;
+          }
+
+          if (params.alarmId) {
+            recordSavedAlarmFired(params.alarmId).catch(() => {});
+          }
+
           startRingingTimerIfNeeded(
             getStartedAt(nextRingingState, params.startedAt),
           );
@@ -143,10 +164,10 @@ export default function RingingScreen() {
           }
 
           setErrorMessage(getErrorMessage(error, t));
-
-          startRingingTimerIfNeeded(
-            params.startedAt ?? new Date().toISOString(),
-          );
+          // Fail closed: without a confirmed native ringing state there's no reliable
+          // way to tell a genuine alarm from an early show-intent entry, so the Wake Up
+          // Challenge does not start.
+          setRingingCheckStatus('not-ringing');
         }
       }
 
@@ -157,7 +178,7 @@ export default function RingingScreen() {
       isActive = false;
       clearTimeout(timeout);
     };
-  }, [params.startedAt, t]);
+  }, [params.alarmId, params.startedAt, t]);
 
   // Edge-triggered on purpose: alarm-timer.ts is a module-level singleton, so the very
   // first status this screen observes can be a stale 'expired' left over from a
@@ -182,6 +203,10 @@ export default function RingingScreen() {
   }, [timer?.status]);
 
   async function handleStartChallenge() {
+    if (ringingCheckStatus !== 'confirmed') {
+      return;
+    }
+
     setIsStarting(true);
 
     try {
@@ -206,9 +231,15 @@ export default function RingingScreen() {
     }
   }
 
+  function handleBackToAlarms() {
+    router.replace('/alarms');
+  }
+
   const wakeUpTime = formatWakeUpTime(
     getStartedAt(ringingState, params.startedAt),
   );
+  const isChallengeConfirmed = ringingCheckStatus === 'confirmed';
+  const isNotRinging = ringingCheckStatus === 'not-ringing';
 
   return (
     <View style={styles.screen}>
@@ -225,7 +256,11 @@ export default function RingingScreen() {
         <View style={styles.content}>
           <Text style={styles.wakeUpTime}>{wakeUpTime}</Text>
           <Text style={styles.greeting}>{t('ringing.greeting')}</Text>
-          <Text style={styles.caption}>{t('ringing.caption')}</Text>
+          <Text style={styles.caption}>
+            {isNotRinging
+              ? t('ringing.notRinging.message')
+              : t('ringing.caption')}
+          </Text>
 
           <Animated.View
             style={[styles.cameraRing, { transform: [{ scale: pulse }] }]}
@@ -243,16 +278,21 @@ export default function RingingScreen() {
 
         <Pressable
           accessibilityRole="button"
-          disabled={isStarting}
-          onPress={handleStartChallenge}
+          disabled={isStarting || (!isChallengeConfirmed && !isNotRinging)}
+          onPress={isNotRinging ? handleBackToAlarms : handleStartChallenge}
           style={({ pressed }) => [
             styles.button,
             pressed && styles.buttonPressed,
-            isStarting && styles.buttonDisabled,
+            (isStarting || (!isChallengeConfirmed && !isNotRinging)) &&
+              styles.buttonDisabled,
           ]}
         >
           <Text style={styles.buttonText}>
-            {isStarting ? t('ringing.starting') : t('ringing.startButton')}
+            {isStarting
+              ? t('ringing.starting')
+              : isNotRinging
+                ? t('ringing.notRinging.backButton')
+                : t('ringing.startButton')}
           </Text>
         </Pressable>
 

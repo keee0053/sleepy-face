@@ -369,7 +369,11 @@
     "greeting": "おはよう！",
     "caption": "写真を撮影するとアラームを止められます",
     "starting": "起動中...",
-    "startButton": "顔写真を撮る"
+    "startButton": "顔写真を撮る",
+    "notRinging": {
+      "message": "このアラームはまだ鳴っていません。",
+      "backButton": "アラーム一覧に戻る"
+    }
   },
   "wakeFriends": {
     "title": "友達を起こす",

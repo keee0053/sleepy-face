@@ -369,7 +369,11 @@
     "greeting": "Good morning!",
     "caption": "Take a photo to stop the alarm",
     "starting": "Starting...",
-    "startButton": "Take a Selfie"
+    "startButton": "Take a Selfie",
+    "notRinging": {
+      "message": "This alarm isn't ringing yet.",
+      "backButton": "Back to Alarms"
+    }
   },
   "wakeFriends": {
     "title": "Wake a Friend",
