@@ -157,7 +157,14 @@ export type AbandonedWakeChallengeAttemptOutcome =
 // background) rather than one the user actually walked away from -- treating it as
 // abandoned this early would show a false "you quit" failure screen the moment they
 // reopen the app, even though nothing has actually gone wrong yet.
-const ABANDONED_GRACE_PERIOD_MS = 2 * 60 * 1000;
+//
+// The JS countdown timer is deliberately paused for parts of every normal attempt
+// (face-check.tsx pauses it while checkFaceProof() runs, and it stays paused through
+// face-check-success.tsx's 5-second countdown, only resuming once quiz.tsx mounts), so
+// real wall-clock elapsed time routinely exceeds ALARM_TIMER_SECONDS even for a
+// legitimate, still-in-progress attempt. The extra buffer below covers that pause time
+// on top of the full nominal timer, rather than merely matching it.
+const ABANDONED_GRACE_PERIOD_MS = 120 * 1000 + 90 * 1000;
 
 export function getAbandonedWakeChallengeAttemptOutcome(
   record: WakeChallengeAttemptRecord | null,

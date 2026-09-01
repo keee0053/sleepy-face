@@ -182,6 +182,15 @@ describe('getAbandonedWakeChallengeAttemptOutcome', () => {
     });
   });
 
+  it('does not report abandonment when elapsed time exceeds the nominal 120s timer but stays within the pause-time buffer', () => {
+    const record = storedRecord({ startedAt: '2026-08-19T00:00:00.000Z' });
+    const now = new Date('2026-08-19T00:03:00.000Z');
+
+    expect(getAbandonedWakeChallengeAttemptOutcome(record, now)).toEqual({
+      abandoned: false,
+    });
+  });
+
   it('treats an unparsable startedAt as abandoned regardless of when checked', () => {
     const record = storedRecord({ startedAt: 'not-a-date' });
 
