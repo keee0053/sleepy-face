@@ -194,7 +194,21 @@ export default function AlarmsScreen() {
 
   const handleToggleAlarm = useCallback(
     async (alarm: SavedAlarm, isEnabled: boolean) => {
-      const previousAlarms = alarms;
+      const previousIsEnabled = alarm.isEnabled;
+
+      // Reverts only this alarm's isEnabled via a functional update, rather than
+      // restoring a snapshot of the whole list -- a stale full-list snapshot would
+      // clobber a second alarm's toggle that succeeded while this one was still in
+      // flight (e.g. awaiting the permission prompt below).
+      function revertToggle() {
+        setAlarms((currentAlarms) =>
+          currentAlarms.map((currentAlarm) =>
+            currentAlarm.id === alarm.id
+              ? { ...currentAlarm, isEnabled: previousIsEnabled }
+              : currentAlarm,
+          ),
+        );
+      }
 
       setErrorMessage(null);
       setUpdatingAlarmId(alarm.id);
@@ -211,7 +225,7 @@ export default function AlarmsScreen() {
           const permissionResult = await ensureAlarmPermissions();
 
           if (!permissionResult.granted) {
-            setAlarms(previousAlarms);
+            revertToggle();
             setErrorMessage(
               getPermissionDeniedMessage(permissionResult.reason, t),
             );
@@ -226,13 +240,13 @@ export default function AlarmsScreen() {
           ),
         );
       } catch (error) {
-        setAlarms(previousAlarms);
+        revertToggle();
         setErrorMessage(getAlarmErrorMessage(error, t));
       } finally {
         setUpdatingAlarmId(null);
       }
     },
-    [alarms, t],
+    [t],
   );
 
   const handleFireTestAlarm = useCallback(async () => {
