@@ -16,7 +16,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { FriendListLoadingSkeleton } from '@/components/loading-skeletons';
 import { QuestionCountStepper } from '@/components/question-count-stepper';
-import { PROFILE_ICON_SOURCES } from '@/constants/profile-icons';
+import { getProfileIconSource } from '@/constants/profile-icons';
 import { DEFAULT_QUIZ_QUESTION_COUNT } from '@/services/alarm';
 import {
   activateWakeFriendAlarm,
@@ -126,7 +126,7 @@ export default function WakeFriendsScreen() {
           <View style={styles.avatar}>
             <Image
               contentFit="cover"
-              source={PROFILE_ICON_SOURCES[item.iconId]}
+              source={getProfileIconSource(item.iconId)}
               style={styles.avatarImage}
             />
           </View>

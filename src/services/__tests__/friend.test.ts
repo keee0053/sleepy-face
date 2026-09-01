@@ -110,6 +110,36 @@ describe('friend service', () => {
     expect(mocks.limit).toHaveBeenCalledWith(20);
   });
 
+  it('preserves a custom profile photo URL instead of collapsing it to a preset icon', async () => {
+    mockAuthenticatedUser();
+    mocks.from.mockReturnValue({ select: mocks.select });
+    mocks.select.mockReturnValue({ ilike: mocks.ilike });
+    mocks.ilike.mockReturnValue({ neq: mocks.neq });
+    mocks.neq.mockReturnValue({ limit: mocks.limit });
+    mocks.limit.mockResolvedValue({
+      data: [
+        {
+          created_at: '2026-08-18T00:00:00.000Z',
+          display_name: 'Sleepy Friend',
+          icon_url: 'https://example.com/storage/photo.jpg',
+          id: 'profile-b',
+          user_id: 'sleepy-friend',
+        },
+      ],
+      error: null,
+    });
+
+    await expect(searchProfiles(' sleepy ')).resolves.toEqual([
+      {
+        createdAt: '2026-08-18T00:00:00.000Z',
+        displayName: 'Sleepy Friend',
+        iconId: 'https://example.com/storage/photo.jpg',
+        id: 'profile-b',
+        userId: 'sleepy-friend',
+      },
+    ]);
+  });
+
   it('excludes profiles the viewer has blocked', async () => {
     mockAuthenticatedUser();
     mocks.listBlockedProfileIds.mockResolvedValue(['profile-b']);

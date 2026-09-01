@@ -16,7 +16,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { LoadingButtonContent } from '@/components/loading';
 import { FriendListLoadingSkeleton } from '@/components/loading-skeletons';
-import { PROFILE_ICON_SOURCES } from '@/constants/profile-icons';
+import { getProfileIconSource } from '@/constants/profile-icons';
 import { getCurrentUserId } from '@/services/auth';
 import {
   FriendServiceError,
@@ -262,7 +262,7 @@ export default function AddFriendScreen() {
         <View style={styles.avatar}>
           <Image
             contentFit="cover"
-            source={PROFILE_ICON_SOURCES[item.iconId]}
+            source={getProfileIconSource(item.iconId)}
             style={styles.avatarImage}
           />
         </View>

@@ -1,12 +1,13 @@
 import { supabase } from '@/lib/supabase';
 import { listBlockedProfileIds } from '@/services/moderation';
-import { toProfileIconId, type ProfileIconId } from '@/services/user';
+import { toProfileIconValue } from '@/services/user';
 
 export type FriendSearchProfile = {
   id: string;
   userId: string;
   displayName: string;
-  iconId: ProfileIconId;
+  // Either one of PROFILE_ICON_IDS or a custom photo URL — see isCustomProfilePhotoUrl.
+  iconId: string;
   createdAt: string;
 };
 
@@ -76,7 +77,7 @@ function mapProfile(row: ProfileSearchRow): FriendSearchProfile {
   return {
     createdAt: row.created_at,
     displayName: row.display_name,
-    iconId: toProfileIconId(row.icon_url),
+    iconId: toProfileIconValue(row.icon_url),
     id: row.id,
     userId: row.user_id,
   };

@@ -195,4 +195,39 @@ describe('listBlockedProfiles', () => {
       },
     ]);
   });
+
+  it('preserves a custom profile photo URL instead of collapsing it to a preset icon', async () => {
+    mockAuthenticatedUser();
+    mocks.select.mockReturnValueOnce({ eq: mocks.eq });
+    mocks.eq.mockReturnValue({ order: mocks.order });
+    mocks.order.mockResolvedValue({
+      data: [
+        { blocked_id: 'profile-b', created_at: '2026-08-26T00:00:00.000Z' },
+      ],
+      error: null,
+    });
+    mocks.select.mockReturnValueOnce({ in: mocks.in });
+    mocks.in.mockResolvedValue({
+      data: [
+        {
+          display_name: '友達B',
+          icon_url: 'https://example.com/storage/photo.jpg',
+          id: 'profile-b',
+          user_id: 'friend_b',
+        },
+      ],
+      error: null,
+    });
+    mocks.from.mockReturnValue({ select: mocks.select });
+
+    await expect(listBlockedProfiles()).resolves.toEqual([
+      {
+        blockedAt: '2026-08-26T00:00:00.000Z',
+        displayName: '友達B',
+        iconId: 'https://example.com/storage/photo.jpg',
+        id: 'profile-b',
+        userId: 'friend_b',
+      },
+    ]);
+  });
 });

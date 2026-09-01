@@ -14,7 +14,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { PROFILE_ICON_SOURCES } from '@/constants/profile-icons';
+import { getProfileIconSource } from '@/constants/profile-icons';
 import { listFriends, type FriendProfile } from '@/services/friend';
 import { sendHelpRequest } from '@/services/help-request';
 
@@ -157,7 +157,7 @@ export default function HelpRequestScreen() {
                   >
                     <Image
                       contentFit="cover"
-                      source={PROFILE_ICON_SOURCES[friend.iconId]}
+                      source={getProfileIconSource(friend.iconId)}
                       style={styles.friendAvatar}
                     />
                     <Text style={styles.friendName}>{friend.displayName}</Text>

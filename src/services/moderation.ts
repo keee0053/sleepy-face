@@ -1,5 +1,5 @@
 import { supabase } from '@/lib/supabase';
-import { toProfileIconId, type ProfileIconId } from '@/services/user';
+import { toProfileIconValue } from '@/services/user';
 
 export type ReportTargetType = 'photo' | 'comment' | 'profile';
 export type ReportReason = 'inappropriate' | 'harassment' | 'spam' | 'other';
@@ -8,7 +8,8 @@ export type BlockedProfile = {
   id: string;
   userId: string;
   displayName: string;
-  iconId: ProfileIconId;
+  // Either one of PROFILE_ICON_IDS or a custom photo URL — see isCustomProfilePhotoUrl.
+  iconId: string;
   blockedAt: string;
 };
 
@@ -209,7 +210,7 @@ export async function listBlockedProfiles(): Promise<BlockedProfile[]> {
     return {
       blockedAt: block.created_at,
       displayName: profile?.display_name ?? '不明なユーザー',
-      iconId: toProfileIconId(profile?.icon_url),
+      iconId: toProfileIconValue(profile?.icon_url),
       id: block.blocked_id,
       userId: profile?.user_id ?? '',
     };
