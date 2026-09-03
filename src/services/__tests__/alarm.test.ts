@@ -438,6 +438,50 @@ describe('Saved Alarm service', () => {
     );
   });
 
+  it('retries the reschedule once after a transient native failure', async () => {
+    mocks.getItem.mockResolvedValue(JSON.stringify([storedAlarm()]));
+    vi.setSystemTime(new Date('2026-08-17T07:30:00.000Z'));
+    alarmMechanicsMocks.scheduleAlarmOccurrence
+      .mockRejectedValueOnce(new Error('transient native failure'))
+      .mockResolvedValueOnce({
+        alarmId: 'alarm-1',
+        scheduledFor: '2026-08-18T07:30:00.000Z',
+      });
+
+    const resultPromise = recordSavedAlarmFired('alarm-1');
+    await vi.advanceTimersByTimeAsync(2000);
+    const updated = await resultPromise;
+
+    expect(updated).toMatchObject({ lastFiredLocalDay: '2026-08-17' });
+    expect(alarmMechanicsMocks.scheduleAlarmOccurrence).toHaveBeenCalledTimes(
+      2,
+    );
+  });
+
+  it('still throws after the retry when the native failure is persistent', async () => {
+    mocks.getItem.mockResolvedValue(JSON.stringify([storedAlarm()]));
+    vi.setSystemTime(new Date('2026-08-17T07:30:00.000Z'));
+    alarmMechanicsMocks.scheduleAlarmOccurrence.mockRejectedValue(
+      new Error('persistent native failure'),
+    );
+
+    const resultPromise = recordSavedAlarmFired('alarm-1');
+    const expectation = expect(resultPromise).rejects.toSatisfy((error) => {
+      expectAlarmServiceError(error, 'alarm_scheduling_failed');
+      return true;
+    });
+    await vi.advanceTimersByTimeAsync(2000);
+    await expectation;
+
+    expect(alarmMechanicsMocks.scheduleAlarmOccurrence).toHaveBeenCalledTimes(
+      2,
+    );
+    expect(mocks.setItem).not.toHaveBeenCalledWith(
+      'sleepy-face:saved-alarms',
+      expect.anything(),
+    );
+  });
+
   it('is a safe no-op recording a fire for an unknown alarm id (e.g. the dev test alarm)', async () => {
     mocks.getItem.mockResolvedValue(JSON.stringify([storedAlarm()]));
 

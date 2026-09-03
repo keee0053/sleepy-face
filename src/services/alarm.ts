@@ -564,6 +564,26 @@ export async function setSavedAlarmEnabled(
   return updatedAlarm;
 }
 
+const RESCHEDULE_RETRY_DELAY_MS = 2000;
+
+// recordSavedAlarmFired is called fire-and-forget from ringing.tsx (there's no
+// interactive UI to retry from mid-Wake-Up-Challenge), so a single transient failure of
+// the native reschedule call -- which cancels the alarm's old occurrence before it can
+// arm the new one, see AlarmRingingModule.kt's scheduleSavedAlarmOccurrence -- would
+// otherwise silently leave the alarm with nothing armed until the device reboots or
+// someone happens to reopen the Alarms screen. One short-delayed retry absorbs a one-off
+// transient failure without masking a persistent one.
+async function syncScheduledAlarmWithRetry(alarm: SavedAlarm): Promise<void> {
+  try {
+    await syncScheduledAlarm(alarm);
+  } catch {
+    await new Promise((resolve) =>
+      setTimeout(resolve, RESCHEDULE_RETRY_DELAY_MS),
+    );
+    await syncScheduledAlarm(alarm);
+  }
+}
+
 // Called by the ringing flow when a Saved Alarm fires, so its already-passed slot for
 // today is skipped rather than re-armed. A no-op for unknown IDs (e.g. the dev test alarm).
 export async function recordSavedAlarmFired(
@@ -584,7 +604,7 @@ export async function recordSavedAlarmFired(
   };
 
   await writeLastAlarmAttemptLocalDay(getLocalDay(now));
-  await syncScheduledAlarm(updatedAlarm);
+  await syncScheduledAlarmWithRetry(updatedAlarm);
   await writeSavedAlarms(
     savedAlarms.map((alarm) => (alarm.id === alarmId ? updatedAlarm : alarm)),
   );

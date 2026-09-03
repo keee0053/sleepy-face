@@ -25,6 +25,7 @@ import {
   alarmWillSkipToday,
   clearAlarmFiredToday,
   listSavedAlarms,
+  resyncAllScheduledAlarms,
   setSavedAlarmEnabled,
   type SavedAlarm,
   type Weekday,
@@ -169,6 +170,13 @@ export default function AlarmsScreen() {
 
   useEffect(() => {
     let isActive = true;
+
+    // Best-effort re-arm for anything that fell out of sync with the native scheduler
+    // (e.g. a reschedule that silently failed right after an alarm fired -- see
+    // recordSavedAlarmFired in services/alarm.ts) without waiting for a device reboot,
+    // which is otherwise the only other time this resync runs. A failure here is
+    // swallowed on purpose: it must never block the alarm list itself from loading.
+    resyncAllScheduledAlarms().catch(() => {});
 
     listSavedAlarms()
       .then((nextAlarms) => {

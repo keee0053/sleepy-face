@@ -152,7 +152,12 @@ export default function RingingScreen() {
           }
 
           if (params.alarmId) {
-            recordSavedAlarmFired(params.alarmId).catch(() => {});
+            recordSavedAlarmFired(params.alarmId).catch((error) => {
+              console.warn(
+                '[ringing] failed to record alarm fired / reschedule next occurrence',
+                error,
+              );
+            });
           }
 
           startRingingTimerIfNeeded(
