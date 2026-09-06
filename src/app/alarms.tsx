@@ -24,6 +24,7 @@ import {
   AlarmServiceError,
   alarmWillSkipToday,
   clearAlarmFiredToday,
+  getNextAlarmOccurrence,
   listSavedAlarms,
   resyncAllScheduledAlarms,
   setSavedAlarmEnabled,
@@ -69,6 +70,23 @@ function formatWeekdays(
   return DISPLAY_WEEKDAYS.filter((weekday) => weekdays.includes(weekday))
     .map((weekday) => t(`common.weekdaysShort.${WEEKDAY_KEYS[weekday]}`))
     .join(' ');
+}
+
+// The alarm always rings at the same hour/minute, so only the weekday of the next
+// occurrence needs to be computed here -- but it does need to be computed: an alarm with
+// more than one weekday selected (e.g. every day) skips ahead to TOMORROW, not next week,
+// once today's slot has already fired.
+function getSkipTodayMessage(
+  alarm: SavedAlarm,
+  t: (key: string, options?: Record<string, string>) => string,
+): string {
+  const nextOccurrence = getNextAlarmOccurrence(alarm);
+  const weekdayKey = WEEKDAY_KEYS[nextOccurrence.getDay() as Weekday];
+
+  return t('alarms.skipToday', {
+    time: formatTime(alarm),
+    weekday: t(`common.weekdaysShort.${weekdayKey}`),
+  });
 }
 
 function getAlarmErrorMessage(
@@ -347,7 +365,9 @@ export default function AlarmsScreen() {
           </Text>
 
           {alarmWillSkipToday(item) && (
-            <Text style={styles.skipTodayText}>{t('alarms.skipToday')}</Text>
+            <Text style={styles.skipTodayText}>
+              {getSkipTodayMessage(item, t)}
+            </Text>
           )}
 
           {isDevMode && item.lastFiredLocalDay && (

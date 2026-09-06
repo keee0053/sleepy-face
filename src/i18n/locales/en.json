@@ -227,7 +227,7 @@
     "devClearFiredToday": "[DEV] Clear limit",
     "addAlarmAccessibilityLabel": "Add alarm",
     "noRepeat": "No repeat",
-    "skipToday": "It won't ring today. It will ring again next week.",
+    "skipToday": "It won't ring today. Next ring: {{weekday}} at {{time}}.",
     "status": {
       "on": "ON",
       "off": "OFF"

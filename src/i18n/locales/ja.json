@@ -227,7 +227,7 @@
     "devClearFiredToday": "[DEV] 制限解除",
     "addAlarmAccessibilityLabel": "アラームを追加",
     "noRepeat": "繰り返しなし",
-    "skipToday": "今日は鳴りません。次回は来週鳴ります。",
+    "skipToday": "今日は鳴りません。次回は{{weekday}}曜日 {{time}}に鳴ります。",
     "status": {
       "on": "ON",
       "off": "OFF"
