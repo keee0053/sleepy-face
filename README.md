@@ -17,6 +17,11 @@
 - **フレンド機能**: 友達申請・承認、「起こす」「助けて」
 - **プロフィール**: 表示名・アイコン(プリセット or カスタム写真)の設定
 
+## 対応プラットフォーム
+
+- **Android**: 全機能に対応(Google Play でのクローズドテストを完了し、製品版の公開審査中)
+- **iOS**: 開発中。AlarmKit(iOS 26 以降)によるアラームと Vision フレームワークによる顔検出を別ブランチ([`feature/ios-alarm-face-flow`](https://github.com/keee0053/sleepy-face/tree/feature/ios-alarm-face-flow))で実装し、実機で動作確認済みです。プッシュ通知が必要な友達機能は未対応で、`main` への統合と App Store での配信に向けて準備を進めています
+
 ## 技術スタック
 
 - **フロントエンド**: Expo (React Native) / TypeScript / Expo Router(ファイルベースルーティング)
