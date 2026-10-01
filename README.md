@@ -1,85 +1,62 @@
-# Welcome to your Expo app 👋
+# SleepyFace
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+寝顔写真を撮るまで鳴り止まない目覚ましアプリです。起床チャレンジ(顔認証→クイズ)に失敗すると、寝起きの顔写真が友達のフィードに公開されます。「友達に見られるかもしれない」という軽い社会的プレッシャーを、一人では続かない早起きの習慣化のモチベーションに変えることを狙っています。
 
-## Get started
+## 概要
 
-1. Install dependencies
+- アラームは、寝顔写真(Face Proof)を撮影するまで鳴り続けます(Androidの`AlarmManager`を使った正確な時刻起床)
+- 写真撮影後にクイズが出題され、不正解・制限時間切れなど写真を提出しなかった場合はその日1日フレンドのフィード閲覧がブロックされます
+- クイズに失敗すると、寝起きの写真がフレンドのフィードに投稿され、閲覧されます
+- 友達同士で「起こす」(相手のアラームを遠隔で鳴らす)「助けて」(寝坊しそうなときに友達に通知を送る)といった、助け合いの機能もあります
 
-   ```bash
-   npm install
-   ```
+## 主な機能
 
-2. Start the app
+- **アラーム管理**: 時刻・曜日ごとの繰り返し・アラーム音の設定
+- **起床チャレンジ**: 前面カメラでの顔写真撮影(Android ML Kitによる顔検出)→クイズ回答
+- **フレンドフィード**: 友達の起床結果(成功/失敗)の閲覧、リアクション・コメント
+- **フレンド機能**: 友達申請・承認、「起こす」「助けて」
+- **プロフィール**: 表示名・アイコン(プリセット or カスタム写真)の設定
 
-   ```bash
-   npx expo start
-   ```
+## 技術スタック
 
-In the output, you'll find options to open the app in a
+- **フロントエンド**: Expo (React Native) / TypeScript / Expo Router(ファイルベースルーティング)
+- **バックエンド**: Supabase(Postgres、Auth、Storage、Edge Functions、Row Level Security)
+- **ネイティブ機能**: Kotlinで実装したカスタムExpo Module(`AlarmManager`による正確なアラーム鳴動・全画面通知・端末起動時の再同期、ML Kit Face Detectionによる顔検出)
+- **テスト**: Vitest によるユニットテスト、ESLint/Prettier によるコード品質チェック(コミット時・CI時に自動実行)
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+## アーキテクチャ上の特徴
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+- アラームは「鳴動のたびに翌回分を再スケジュールする」one-shot方式で実現しており、再スケジュールの失敗を検知してリトライ・再同期する仕組みを備えています
+- Supabase側は`security definer`なPostgres RPC関数と Row Level Security を組み合わせ、収益化クォータやフレンド関係の改ざんを防ぐトリガー等でサーバー側のデータ整合性を担保しています
+- 収益化機能(リワード広告・買い切りプレミアム)は実装済みですが、現在は公開用ブランチから意図的に分離しており、利用規模が拡大してから統合する方針です
 
-## Code quality
-
-Prettier and ESLint run automatically at three checkpoints:
-
-- On save in VS Code, Prettier formats the file and ESLint applies safe fixes.
-- Before each commit, Husky and lint-staged format and lint only staged files.
-- On pull requests and pushes to `develop/v1` or `main`, GitHub Actions checks the whole project.
-
-You can also run the checks manually:
+## セットアップ
 
 ```bash
+npm install
+npx expo start
+```
+
+Android/顔検出・ネイティブアラーム機能はExpo Goでは動作しないため、Androidの開発ビルド(`expo-dev-client`)でのみ検証できます。詳細は [`docs/current_implementation_spec.md`](./docs/current_implementation_spec.md) を参照してください。
+
+### コード品質チェック
+
+```bash
+npm test          # ユニットテスト
+npm run lint       # ESLint
 npm run format:check
-npm run lint
 ```
 
-To apply automatic fixes, run `npm run format` and `npm run lint:fix`.
+## プロジェクトドキュメント
 
-## Get a fresh project
+- [現行実装仕様](./docs/current_implementation_spec.md)
+- [MVPスコープ](./docs/mvp_scope.md)
+- [コードベース構成](./docs/codebase_structure.md)
+- [データベース設計](./docs/database_design.md)
+- [フロント/バックエンドAPI契約](./docs/api_contract.md)
+- [技術スタック詳細](./docs/tech_stack.md)
+- [Android Face Proof(顔検出)](./docs/android_face_proof.md)
 
-When you're ready, run:
+## クレジット
 
-```bash
-npm run reset-project
-```
-
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
-
-### Other setup steps
-
-- If you'd like to set up unit testing, follow our guide on ["Unit Testing with Jest"](https://docs.expo.dev/develop/unit-testing/)
-- Learn more about the TypeScript setup in this template in our guide on ["Using TypeScript"](https://docs.expo.dev/guides/typescript/)
-
-## Learn more
-
-To learn more about developing your project with Expo, look at the following resources:
-
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
-
-## Attributions
-
-Third-party asset credits, including the preset Profile Icons, are listed in [`docs/attributions.md`](./docs/attributions.md).
-
-## Project documentation
-
-- [Current implementation specification](./docs/current_implementation_spec.md)
-- [MVP target scope](./docs/mvp_scope.md)
-- [Current codebase structure](./docs/codebase_structure.md)
-- [Database design and schema provenance](./docs/database_design.md)
-- [Frontend/backend API contract](./docs/api_contract.md)
-- [Technical stack](./docs/tech_stack.md)
-
-## Join the community
-
-Join our community of developers creating universal apps.
-
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+プリセットプロフィールアイコンなど、サードパーティ素材のクレジットは [`docs/attributions.md`](./docs/attributions.md) に記載しています。
