@@ -1,8 +1,8 @@
-# Attributions
+# クレジット
 
-## Profile Icons
+## プロフィールアイコン
 
-The 8 preset Profile Icons (`assets/images/profile-icons/`: `human`, `man`, `man2`, `woman`, `boy`, `child`, `old-man`, `grandmother`) are free-tier icons from [Flaticon](https://www.flaticon.com), sourced from the following collections. Flaticon's free-tier license requires attribution; per-file source pages were not individually re-verified, so all collections used are credited below rather than guessing at a per-file mapping:
+プリセットのプロフィールアイコン8種類(`assets/images/profile-icons/` の `human`、`man`、`man2`、`woman`、`boy`、`child`、`old-man`、`grandmother`)は、[Flaticon](https://www.flaticon.com) の無料アイコンを使用しています。Flaticon の無料ライセンスではクレジット表記が必要です。ファイルごとの入手元ページは個別に再確認していないため、ファイルとの対応を推測で書くのではなく、使用したコレクションをすべて以下に記載しています(クレジット表記は Flaticon 指定の形式のまま記載しています)。
 
 - [User icons](https://www.flaticon.com/free-icons/user) created by Magnific - Flaticon
 - [Old man icons](https://www.flaticon.com/free-icons/old-man) created by Magnific - Flaticon

@@ -54,12 +54,6 @@ npm run format:check
 ## プロジェクトドキュメント
 
 - [現行実装仕様](./docs/current_implementation_spec.md)
-- [MVPスコープ](./docs/mvp_scope.md)
-- [コードベース構成](./docs/codebase_structure.md)
-- [データベース設計](./docs/database_design.md)
-- [フロント/バックエンドAPI契約](./docs/api_contract.md)
-- [技術スタック詳細](./docs/tech_stack.md)
-- [Android Face Proof(顔検出)](./docs/android_face_proof.md)
 
 ## クレジット
 
