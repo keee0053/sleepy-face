@@ -41,7 +41,7 @@ npm install
 npx expo start
 ```
 
-Android/顔検出・ネイティブアラーム機能はExpo Goでは動作しないため、Androidの開発ビルド(`expo-dev-client`)でのみ検証できます。詳細は [`docs/current_implementation_spec.md`](./docs/current_implementation_spec.md) を参照してください。
+Android/顔検出・ネイティブアラーム機能はExpo Goでは動作しないため、Androidの開発ビルド(`expo-dev-client`)でのみ検証できます。
 
 ### コード品質チェック
 
@@ -50,10 +50,6 @@ npm test          # ユニットテスト
 npm run lint       # ESLint
 npm run format:check
 ```
-
-## プロジェクトドキュメント
-
-- [現行実装仕様](./docs/current_implementation_spec.md)
 
 ## クレジット
 
