@@ -19,7 +19,7 @@
 
 ## 対応プラットフォーム
 
-- **Android**: 全機能に対応。[Google Play で公開中](https://play.google.com/store/apps/details?id=com.team5.sleepyface)
+- **Android**: 全機能に対応。[Google Play で公開中](https://play.google.com/store/apps/details?id=com.team5.sleepyface)(2026年10月3日公開)
 - **iOS**: AlarmKit(iOS 26 以降)によるアラームと Vision フレームワークによる顔検出を別ブランチ([`feature/ios-alarm-face-flow`](https://github.com/keee0053/sleepy-face/tree/feature/ios-alarm-face-flow))で実装し、実機で動作確認済みです。App Store での配信とプッシュ通知には有料の Apple Developer Program への登録が必要なため、現時点では配信しておらず、プッシュ通知を使う友達機能も未対応です
 
 ## 技術スタック
