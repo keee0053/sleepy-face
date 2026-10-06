@@ -1,5 +1,18 @@
 # SleepyFace
 
+<p align="center">
+  <img src="./assets/images/app-icon.png" alt="SleepyFaceのアプリアイコン" width="120" />
+</p>
+
+<p align="center">
+  <a href="https://play.google.com/store/apps/details?id=com.team5.sleepyface">
+    <img src="https://img.shields.io/badge/Google_Play-公開中-34A853?logo=googleplay&logoColor=white" alt="Google Playで公開中" />
+  </a>
+  <a href="https://github.com/keee0053/sleepy-face/actions/workflows/code-quality.yml">
+    <img src="https://github.com/keee0053/sleepy-face/actions/workflows/code-quality.yml/badge.svg" alt="Code quality" />
+  </a>
+</p>
+
 寝顔写真を撮るまで鳴り止まない目覚ましアプリです。起床チャレンジ(顔認証→クイズ)に失敗すると、寝起きの顔写真が友達のフィードに公開されます。
 
 ## 概要
@@ -17,6 +30,12 @@
 - **フレンド機能**: 友達申請・承認、「起こす」「助けて」
 - **プロフィール**: 表示名・アイコン(プリセット or カスタム写真)の設定
 
+## 画面
+
+<p align="center">
+  <img src="./docs/screenshots/wake-quiz.png" alt="起床チャレンジの計算クイズ画面" width="300" />
+</p>
+
 ## 対応プラットフォーム
 
 - **Android**: 全機能に対応。[Google Play で公開中](https://play.google.com/store/apps/details?id=com.team5.sleepyface)(2026年10月3日公開)
@@ -33,6 +52,19 @@
 
 - アラームは「鳴動のたびに翌回分を再スケジュールする」one-shot方式で実現しており、再スケジュールの失敗を検知してリトライ・再同期する仕組みを備えています
 - Supabase側は`security definer`なPostgres RPC関数と Row Level Security を組み合わせ、フレンド関係の改ざんを防ぐトリガー等でサーバー側のデータ整合性を担保しています
+
+## 開発体制と個人で担当した改善
+
+このアプリは4名のチームで開発し、その後このリポジトリで個人開発を続けています。個人開発では主に次を実装・改善しました。
+
+- 友達のアラームを遠隔で鳴らす機能とバックエンド
+- 日本語・英語の多言語化、モデレーション、アカウント・コンテンツ削除
+- 失敗写真の14日後自動削除とStorageのアクセス制御
+- アラームの再スケジュール、リトライ、再同期による鳴動の信頼性改善
+- Row Level SecurityとPostgres関数の権限検証、データ整合性の改善
+- フィード取得件数の制限とインデックス追加によるパフォーマンス改善
+
+共同開発者と各人の貢献は[Contributors](https://github.com/keee0053/sleepy-face/graphs/contributors)から確認できます。
 
 ## セットアップ
 
